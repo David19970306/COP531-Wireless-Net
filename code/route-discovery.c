@@ -57,6 +57,12 @@ struct route_msg {
   uint8_t pad;
 };
 
+struct node {
+  rimeaddr_t addr;
+  float battery;
+  uint16_t rssi;
+};
+
 struct rrep_hdr {
   uint8_t rreq_id;
   uint8_t hops;
@@ -135,7 +141,7 @@ static void
 insert_route(const rimeaddr_t *originator, const rimeaddr_t *last_hop,
 	     uint8_t hops)
 {
-  PRINTF("%d.%d: Inserting %d.%d into routing table, next hop %d.%d, hop count %d\n",
+  printf("%d.%d: Inserting %d.%d into routing table, next hop %d.%d, hop count %d\n",
 	 rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
 	 originator->u8[0], originator->u8[1],
 	 last_hop->u8[0], last_hop->u8[1],
@@ -160,6 +166,30 @@ insert_route(const rimeaddr_t *originator, const rimeaddr_t *last_hop,
 }*/
 }
 /*---------------------------------------------------------------------------*/
+float compute_route_index(struct node *node, const uint8_t hops)
+{
+	int rssi_sum = 0;
+	uint8_t i = hops;
+	float route_index;
+	while (i-- > 0)
+	{
+		rssi_sum += (int) node->rssi;
+		node += 1;
+	}
+	route_index = rssi_sum;
+	route_index /= hops * (hops + 1);
+	return route_index;
+}
+/*---------------------------------------------------------------------------*/
+int get_decimal(float value)
+{
+	return value;
+}
+int get_fraction(float value)
+{
+	return (value - get_decimal(value)) * 100;
+}
+/*---------------------------------------------------------------------------*/
 static void
 rrep_packet_received(struct unicast_conn *uc, const rimeaddr_t *from)
 {
@@ -168,6 +198,10 @@ rrep_packet_received(struct unicast_conn *uc, const rimeaddr_t *from)
   rimeaddr_t dest;
   struct route_discovery_conn *c = (struct route_discovery_conn *)
     ((char *)uc - offsetof(struct route_discovery_conn, rrepconn));
+  struct node *current_node;
+  struct node *first_node;
+  float route_index;
+  
 
   PRINTF("%d.%d: rrep_packet_received from %d.%d towards %d.%d len %d\n",
 	 rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
@@ -181,7 +215,24 @@ rrep_packet_received(struct unicast_conn *uc, const rimeaddr_t *from)
 	 packetbuf_attr(PACKETBUF_ATTR_RSSI),
 	 packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY));
 
-  insert_route(&msg->originator, from, msg->hops);
+
+  /* Appending node to msg. */
+  packetbuf_set_datalen(sizeof(struct rrep_hdr) + msg->hops * sizeof(struct node));
+  first_node = (void *) (msg + 1);
+  current_node = first_node + msg->hops;
+  rimeaddr_copy(&current_node->addr, &rimeaddr_node_addr);
+  current_node->battery = 0.0f;
+  current_node->rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
+  printf("Appending current node to the reply. ADDR = %d.%d, BATTERY = %d.%02u, RSSI = %d\n", 
+	current_node->addr.u8[0], current_node->addr.u8[1], 
+	get_decimal(current_node->battery), get_fraction(current_node->battery), 
+	current_node->rssi);
+  msg->hops++;
+  
+  route_index = compute_route_index(first_node, msg->hops);
+  printf("Route index = %d.%02u\n", get_decimal(route_index), get_fraction(route_index));
+
+  insert_route(&msg->originator, from, 0);
 
   if(rimeaddr_cmp(&msg->dest, &rimeaddr_node_addr)) {
     PRINTF("rrep for us!\n");
@@ -203,7 +254,7 @@ rrep_packet_received(struct unicast_conn *uc, const rimeaddr_t *from)
     rt = route_lookup(&msg->dest);
     if(rt != NULL) {
       PRINTF("forwarding to %d.%d\n", rt->nexthop.u8[0], rt->nexthop.u8[1]);
-      msg->hops++;
+      // msg->hops++;
       unicast_send(&c->rrepconn, &rt->nexthop);
     } else {
       PRINTF("%d.%d: no route to %d.%d\n", rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1], msg->dest.u8[0], msg->dest.u8[1]);
