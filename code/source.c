@@ -11,7 +11,7 @@
 PROCESS(source_process, "Source");
 AUTOSTART_PROCESSES(&source_process);
 /*---------------------------------------------------------------------------*/
-#define ROUTE_DISCOVERY_TIMEOUT 60 * CLOCK_SECOND
+#define ROUTE_DISCOVERY_TIMEOUT 10 * CLOCK_SECOND
 static const struct route_discovery_callbacks route_discovery_callbacks = { NULL, NULL };
 static struct route_discovery_conn rc;
 static clock_time_t time;
@@ -30,11 +30,11 @@ PROCESS_THREAD(source_process, ev, data)
     static struct etimer et;
     rimeaddr_t dest;
     
-    etimer_set(&et, CLOCK_SECOND);
+    etimer_set(&et, 5* CLOCK_SECOND);
     
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-    dest.u8[0] = 0x01;
-    dest.u8[1] = 0x00;
+    dest.u8[0] = 0xdf;
+    dest.u8[1] = 0xdf;
     route_discovery_discover(&rc, &dest, ROUTE_DISCOVERY_TIMEOUT);
 
   }
