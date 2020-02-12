@@ -1,11 +1,13 @@
 #include "contiki.h"
-#include "net/rime.h"
 
 #include "dev/button-sensor.h"
 
 #include "dev/leds.h"
 
 #include <stdio.h>
+
+#include "route-discovery.h"
+
 
 /*---------------------------------------------------------------------------*/
 PROCESS(dest_process, "Destination");

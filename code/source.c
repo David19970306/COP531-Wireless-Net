@@ -1,11 +1,12 @@
 #include "contiki.h"
-#include "net/rime.h"
 
 #include "dev/button-sensor.h"
 
 #include "dev/leds.h"
 
 #include <stdio.h>
+
+#include "route-discovery.h"
 
 /*---------------------------------------------------------------------------*/
 PROCESS(source_process, "Source");
@@ -30,11 +31,11 @@ PROCESS_THREAD(source_process, ev, data)
     static struct etimer et;
     rimeaddr_t dest;
     
-    etimer_set(&et, 5* CLOCK_SECOND);
+    etimer_set(&et, 5 * CLOCK_SECOND);
     
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-    dest.u8[0] = 0xdf;
-    dest.u8[1] = 0xdf;
+    dest.u8[0] = 0xc0;
+    dest.u8[1] = 0xc0;
     route_discovery_discover(&rc, &dest, ROUTE_DISCOVERY_TIMEOUT);
 
   }
