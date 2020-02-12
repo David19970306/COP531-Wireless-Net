@@ -10,10 +10,7 @@ DEFINES=MODEL_N740
 
 CONTIKI_PROJECT = dest source
 
-# New examples added by George Oikonomou - Loughborough University
-CONTIKI_PROJECT += timer-test broadcast-rime
-
 all: $(CONTIKI_PROJECT) 
 
-CONTIKI = ../../..
+CONTIKI = ../../../..
 include $(CONTIKI)/Makefile.include

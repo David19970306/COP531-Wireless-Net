@@ -1,0 +1,6 @@
+**/obj_sensinode
+*core core *.srec 
+*.lst 
+*.map
+       *.cprg *.bin *.data contiki*.a *.firmware core-labels.S *.ihex *.ini 
+        *.ce *.co *.lnk *.sym *.lib *.ihx *.rel *.mem *.rst *.asm *.hex *.sensinode
