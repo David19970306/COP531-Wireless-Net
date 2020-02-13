@@ -45,8 +45,8 @@
 
 #include "contiki.h"
 #include "net/rime.h"
-#include "net/rime/route.h"
-#include "net/rime/route-discovery.h"
+#include "route.h"
+#include "route-discovery.h"
 
 #include <stddef.h> /* For offsetof */
 #include <stdio.h>
@@ -141,7 +141,7 @@ static void
 insert_route(const rimeaddr_t *originator, const rimeaddr_t *last_hop,
 	     uint8_t hops)
 {
-  printf("%d.%d: Inserting %d.%d into routing table, next hop %d.%d, hop count %d\n",
+  printf("ROUTE_DISCOVERY: %d.%d: Inserting %d.%d into routing table, next hop %d.%d, hop count %d\n",
 	 rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
 	 originator->u8[0], originator->u8[1],
 	 last_hop->u8[0], last_hop->u8[1],
@@ -224,13 +224,13 @@ rrep_packet_received(struct unicast_conn *uc, const rimeaddr_t *from)
   rimeaddr_copy(&current_node->addr, &rimeaddr_node_addr);
   current_node->battery = 0.0f;
   current_node->rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
-  printf("Appending current node to the reply. ADDR = %d.%d, BATTERY = %d.%02u, RSSI = %d\n", 
+  printf("ROUTE_DISCOVERY: Appending current node to the reply. ADDR = %d.%d, BATTERY = %d.%02u, RSSI = %d\n", 
 	current_node->addr.u8[0], current_node->addr.u8[1], 
 	get_decimal(current_node->battery), get_fraction(current_node->battery), 
 	current_node->rssi);
   
   route_index = compute_route_index(first_node, msg->hops);
-  printf("Route index = %d.%02u\n", get_decimal(route_index), get_fraction(route_index));
+  printf("ROUTE_DISCOVERY: Route index = %d.%02u\n", get_decimal(route_index), get_fraction(route_index));
 
   insert_route(&msg->originator, from, 0);
 
@@ -357,11 +357,11 @@ route_discovery_discover(struct route_discovery_conn *c, const rimeaddr_t *addr,
 			 clock_time_t timeout)
 {
   if(rrep_pending) {
-    PRINTF("route_discovery_send: ignoring request because of pending response\n");
+    printf("ROUTE_DISCOVERY: ignoring request because of pending response\n");
     return 0;
   }
 
-  PRINTF("route_discovery_send: sending route request\n");
+  printf("ROUTE_DISCOVERY: sending route request\n");
   ctimer_set(&c->t, timeout, timeout_handler, c);
   rrep_pending = 1;
   send_rreq(c, addr);
