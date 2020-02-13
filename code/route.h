@@ -59,7 +59,7 @@ struct route_entry {
   rimeaddr_t dest;
   rimeaddr_t nexthop;
   uint8_t seqno;
-  uint8_t cost;
+  float cost;
   uint8_t time;
 
   uint8_t decay;
@@ -68,7 +68,7 @@ struct route_entry {
 
 void route_init(void);
 int route_add(const rimeaddr_t *dest, const rimeaddr_t *nexthop,
-	      uint8_t cost, uint8_t seqno);
+	      float cost, uint8_t seqno);
 struct route_entry *route_lookup(const rimeaddr_t *dest);
 void route_refresh(struct route_entry *e);
 void route_decay(struct route_entry *e);

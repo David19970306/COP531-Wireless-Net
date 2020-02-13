@@ -139,15 +139,17 @@ send_rrep(struct route_discovery_conn *c, const rimeaddr_t *dest)
 /*---------------------------------------------------------------------------*/
 static void
 insert_route(const rimeaddr_t *originator, const rimeaddr_t *last_hop,
-	     uint8_t hops)
+	     uint8_t hops, float cost)
 {
-  printf("ROUTE_DISCOVERY: %d.%d: Inserting %d.%d into routing table, next hop %d.%d, hop count %d\n",
+  PRINTF("ROUTE_DISCOVERY_REQUEST: %d.%d: Inserting %d.%d into routing table, next hop %d.%d, hop_count %d, cost %d\n",
 	 rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
 	 originator->u8[0], originator->u8[1],
 	 last_hop->u8[0], last_hop->u8[1],
-	 hops);
+	 hops,
+	 get_decimal(cost), get_fraction(cost)
+	 );
   
-  route_add(originator, last_hop, hops, 0);
+  route_add(originator, last_hop, cost, 0);
   /*
     struct route_entry *rt;
   
@@ -190,6 +192,26 @@ int get_fraction(float value)
 	return (value - get_decimal(value)) * 100;
 }
 /*---------------------------------------------------------------------------*/
+void print_route(struct node *node, const rimeaddr_t *dest, 
+	const uint8_t hops, const float route_index)
+{
+	uint16_t i = hops;
+	node += hops - 1;
+	printf("ROUTE_DISCOVERY_REPLY: ");
+	while (i-- > 0) 
+	{
+		printf("%d.%d (%d.%02uV, %d) -> ", 
+			node->addr.u8[0], node->addr.u8[1], 
+			get_decimal(node->battery), get_fraction(node->battery),
+			node->rssi
+		);
+		node -= 1;
+	}
+	printf("%d.%d INDEX = %d.%02u\n", dest->u8[0], dest->u8[1],
+		get_decimal(route_index), get_fraction(route_index)
+	);
+}
+/*---------------------------------------------------------------------------*/
 static void
 rrep_packet_received(struct unicast_conn *uc, const rimeaddr_t *from)
 {
@@ -224,15 +246,13 @@ rrep_packet_received(struct unicast_conn *uc, const rimeaddr_t *from)
   rimeaddr_copy(&current_node->addr, &rimeaddr_node_addr);
   current_node->battery = 0.0f;
   current_node->rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
-  printf("ROUTE_DISCOVERY: Appending current node to the reply. ADDR = %d.%d, BATTERY = %d.%02u, RSSI = %d\n", 
-	current_node->addr.u8[0], current_node->addr.u8[1], 
-	get_decimal(current_node->battery), get_fraction(current_node->battery), 
-	current_node->rssi);
   
   route_index = compute_route_index(first_node, msg->hops);
-  printf("ROUTE_DISCOVERY: Route index = %d.%02u\n", get_decimal(route_index), get_fraction(route_index));
+  
+  print_route(first_node, &msg->originator, msg->hops, route_index);
 
-  insert_route(&msg->originator, from, 0);
+  // insert_route(&msg->originator, from, -route_index);
+  route_add(&msg->originator, from, -route_index, 0);
 
   if(rimeaddr_cmp(&msg->dest, &rimeaddr_node_addr)) {
     PRINTF("rrep for us!\n");
@@ -254,7 +274,6 @@ rrep_packet_received(struct unicast_conn *uc, const rimeaddr_t *from)
     rt = route_lookup(&msg->dest);
     if(rt != NULL) {
       PRINTF("forwarding to %d.%d\n", rt->nexthop.u8[0], rt->nexthop.u8[1]);
-      // msg->hops++;
       unicast_send(&c->rrepconn, &rt->nexthop);
     } else {
       PRINTF("%d.%d: no route to %d.%d\n", rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1], msg->dest.u8[0], msg->dest.u8[1]);
@@ -293,25 +312,25 @@ rreq_packet_received(struct netflood_conn *nf, const rimeaddr_t *from,
     if(rimeaddr_cmp(&msg->dest, &rimeaddr_node_addr)) {
       PRINTF("%d.%d: route_packet_received: route request for our address\n",
 	     rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1]);
-      PRINTF("from %d.%d hops %d rssi %d lqi %d\n",
+      printf("ROUTE_DISCOVERY_REQUEST: from %d.%d hops %d rssi %d lqi %d\n",
 	     from->u8[0], from->u8[1],
 	     hops,
 	     packetbuf_attr(PACKETBUF_ATTR_RSSI),
 	     packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY));
 
-      insert_route(originator, from, hops);
+      insert_route(originator, from, hops, - (int) packetbuf_attr(PACKETBUF_ATTR_RSSI));
       
       /* Send route reply back to source. */
       send_rrep(c, originator);
       return 0; /* Don't continue to flood the rreq packet. */
     } else {
       /*      PRINTF("route request for %d\n", msg->dest_id);*/
-      PRINTF("from %d.%d hops %d rssi %d lqi %d\n",
+      printf("ROUTE_DISCOVERY_REQUEST: from %d.%d hops %d rssi %d lqi %d\n",
 	     from->u8[0], from->u8[1],
 	     hops,
 	     packetbuf_attr(PACKETBUF_ATTR_RSSI),
 	     packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY));
-      insert_route(originator, from, hops);
+      insert_route(originator, from, hops, - (int) packetbuf_attr(PACKETBUF_ATTR_RSSI));
     }
     
     return 1;
@@ -361,7 +380,7 @@ route_discovery_discover(struct route_discovery_conn *c, const rimeaddr_t *addr,
     return 0;
   }
 
-  printf("ROUTE_DISCOVERY: sending route request\n");
+  printf("ROUTE_DISCOVERY_REQUEST: sending route request\n");
   ctimer_set(&c->t, timeout, timeout_handler, c);
   rrep_pending = 1;
   send_rreq(c, addr);
