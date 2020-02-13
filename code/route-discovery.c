@@ -49,6 +49,8 @@
 #include "route.h"
 #include "route-discovery.h"
 #include "util.h"
+#include "sensor-value.h"
+
 
 
 #include <stddef.h> /* For offsetof */
@@ -62,7 +64,7 @@ struct route_msg {
 
 struct node {
   rimeaddr_t addr;
-  float battery;
+  uint16_t battery;
   uint16_t rssi;
 };
 
@@ -190,13 +192,16 @@ void print_route(struct node *node, const rimeaddr_t *dest,
 	const uint8_t hops, const float route_index)
 {
 	uint16_t i = hops;
+	float battery;
 	node += hops - 1;
 	printf("ROUTE_DISCOVERY_REPLY: ");
 	while (i-- > 0) 
 	{
+		battery = (unsigned) node->battery;
+		battery /= 100.0f;
 		printf("%d.%d (%d.%02uV, %d) -> ", 
 			node->addr.u8[0], node->addr.u8[1], 
-			get_decimal(node->battery), get_fraction(node->battery),
+			get_decimal(battery), get_fraction(battery),
 			node->rssi
 		);
 		node -= 1;
@@ -238,7 +243,7 @@ rrep_packet_received(struct unicast_conn *uc, const rimeaddr_t *from)
   first_node = (void *) (msg + 1);
   current_node = first_node + msg->hops - 1;
   rimeaddr_copy(&current_node->addr, &rimeaddr_node_addr);
-  current_node->battery = 0.0f;
+  current_node->battery = get_battery_voltage();
   current_node->rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
   
   route_index = compute_route_index(first_node, msg->hops);

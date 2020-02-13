@@ -6,9 +6,10 @@ int get_decimal(float value)
 {
 	return value;
 }
-int get_fraction(float value)
+uint16_t get_fraction(float value)
 {
-	return ABS(value - get_decimal(value)) * 100;
+	float fraction = (value - get_decimal(value)) * 100;
+	return ABS(fraction);
 }
 
 #endif /* __UTIL_H__ */
