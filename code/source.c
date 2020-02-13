@@ -12,6 +12,7 @@
 PROCESS(source_process, "Source");
 AUTOSTART_PROCESSES(&source_process);
 /*---------------------------------------------------------------------------*/
+#define ROUTE_DISCOVERY_CHANNEL 146
 #define ROUTE_DISCOVERY_TIMEOUT 10 * CLOCK_SECOND
 static const struct route_discovery_callbacks route_discovery_callbacks = { NULL, NULL };
 static struct route_discovery_conn rc;
@@ -25,7 +26,7 @@ PROCESS_THREAD(source_process, ev, data)
 
   time = clock_time();
 
-  route_discovery_open(&rc, time, 146, &route_discovery_callbacks);
+  route_discovery_open(&rc, time, ROUTE_DISCOVERY_CHANNEL, &route_discovery_callbacks);
 
   while(1) {
     static struct etimer et;

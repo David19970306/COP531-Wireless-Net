@@ -45,8 +45,11 @@
 
 #include "contiki.h"
 #include "net/rime.h"
+
 #include "route.h"
 #include "route-discovery.h"
+#include "util.h"
+
 
 #include <stddef.h> /* For offsetof */
 #include <stdio.h>
@@ -183,15 +186,6 @@ float compute_route_index(struct node *node, const uint8_t hops)
 	return route_index;
 }
 /*---------------------------------------------------------------------------*/
-int get_decimal(float value)
-{
-	return value;
-}
-int get_fraction(float value)
-{
-	return (value - get_decimal(value)) * 100;
-}
-/*---------------------------------------------------------------------------*/
 void print_route(struct node *node, const rimeaddr_t *dest, 
 	const uint8_t hops, const float route_index)
 {
@@ -289,7 +283,7 @@ rreq_packet_received(struct netflood_conn *nf, const rimeaddr_t *from,
   struct route_discovery_conn *c = (struct route_discovery_conn *)
     ((char *)nf - offsetof(struct route_discovery_conn, rreqconn));
 
-  PRINTF("%d.%d: rreq_packet_received from %d.%d hops %d rreq_id %d last %d.%d/%d\n",
+  printf("ROUTE_DISCOVERY_REQUEST: %d.%d: rreq_packet_received from %d.%d hops %d rreq_id %d last %d.%d/%d\n",
 	 rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
 	 from->u8[0], from->u8[1],
 	 hops, msg->rreq_id,
@@ -312,7 +306,7 @@ rreq_packet_received(struct netflood_conn *nf, const rimeaddr_t *from,
     if(rimeaddr_cmp(&msg->dest, &rimeaddr_node_addr)) {
       PRINTF("%d.%d: route_packet_received: route request for our address\n",
 	     rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1]);
-      printf("ROUTE_DISCOVERY_REQUEST: from %d.%d hops %d rssi %d lqi %d\n",
+      PRINTF("ROUTE_DISCOVERY_REQUEST: from %d.%d hops %d rssi %d lqi %d\n",
 	     from->u8[0], from->u8[1],
 	     hops,
 	     packetbuf_attr(PACKETBUF_ATTR_RSSI),
@@ -325,7 +319,7 @@ rreq_packet_received(struct netflood_conn *nf, const rimeaddr_t *from,
       return 0; /* Don't continue to flood the rreq packet. */
     } else {
       /*      PRINTF("route request for %d\n", msg->dest_id);*/
-      printf("ROUTE_DISCOVERY_REQUEST: from %d.%d hops %d rssi %d lqi %d\n",
+      PRINTF("ROUTE_DISCOVERY_REQUEST: from %d.%d hops %d rssi %d lqi %d\n",
 	     from->u8[0], from->u8[1],
 	     hops,
 	     packetbuf_attr(PACKETBUF_ATTR_RSSI),
