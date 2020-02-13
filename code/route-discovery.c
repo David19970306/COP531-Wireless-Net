@@ -217,9 +217,10 @@ rrep_packet_received(struct unicast_conn *uc, const rimeaddr_t *from)
 
 
   /* Appending node to msg. */
+  msg->hops++;
   packetbuf_set_datalen(sizeof(struct rrep_hdr) + msg->hops * sizeof(struct node));
   first_node = (void *) (msg + 1);
-  current_node = first_node + msg->hops;
+  current_node = first_node + msg->hops - 1;
   rimeaddr_copy(&current_node->addr, &rimeaddr_node_addr);
   current_node->battery = 0.0f;
   current_node->rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
@@ -227,7 +228,6 @@ rrep_packet_received(struct unicast_conn *uc, const rimeaddr_t *from)
 	current_node->addr.u8[0], current_node->addr.u8[1], 
 	get_decimal(current_node->battery), get_fraction(current_node->battery), 
 	current_node->rssi);
-  msg->hops++;
   
   route_index = compute_route_index(first_node, msg->hops);
   printf("Route index = %d.%02u\n", get_decimal(route_index), get_fraction(route_index));

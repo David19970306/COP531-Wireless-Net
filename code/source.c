@@ -34,8 +34,8 @@ PROCESS_THREAD(source_process, ev, data)
     etimer_set(&et, 5 * CLOCK_SECOND);
     
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-    dest.u8[0] = 0xc0;
-    dest.u8[1] = 0xc0;
+    dest.u8[0] = 0xda;
+    dest.u8[1] = 0xda;
     route_discovery_discover(&rc, &dest, ROUTE_DISCOVERY_TIMEOUT);
 
   }
