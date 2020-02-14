@@ -13,15 +13,131 @@
 #include "dev/leds.h"
 #include "dev/button-sensor.h"
 
+// standard lib
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 // AODV
-#include "struct2packet.h"
+//#include "struct2packet.h"
+
+/******************************************************************/
+ /*-------------------VALUES-------------*/
+#define INF 50                 // Infinite
+
+/*-------------------FIXED SIZES--------*/
+#define DATA_PAYLOAD_LEN 11     // length of payload in data packages
+
+
+/******************************************************************/
+/*-------------------------DATA STRUCTURES------------------------*/
+
+/*--------------------PACKETS-----------------*/
+// data packet
+struct DATA_PACKET {
+	int dest;
+	char payload[DATA_PAYLOAD_LEN];
+};
+
+// route request packet
+struct RREQ_PACKET {
+	int req_id;
+	int dest;
+	int src;
+};
+
+// route reply packet
+struct RREP_PACKET {
+	int req_id;
+	int dest;
+	int src;
+	int hops;
+};
+
+/*--------------------TABLES-----------------*/
+// routing table entry
+struct ROUTING_TABLE_ENTRY {
+	int dest;
+	int next;
+	int hops;       // number of hops to destination
+	int age;        // age of current entry
+	int valid;      // bool: is the current entry valid?
+};
+
+// waiting table entry (waiting for route reply)
+struct DISCOVERY_TABLE_ENTRY {
+	int req_id;
+	int src;
+	int dest;
+	int snd;
+	int valid;
+	int age;
+};
+
+// queue entry data packages to be sent
+struct QUEUE_ENTRY {
+	struct DATA_PACKET data_pkg;
+	int age;
+	int valid;
+};
+
+/*------------------------------DEFINE----------------------------*/
+
+/*-------------------SEPARATORS------------------*/
+#define ITEM_SEP ";"
+#define VALUES_SEP ":"
+
+/*-------------------PACKETS HEADER---------------*/
+#define DATA_HEADER "DATA"
+#define RREQ_HEADER "ROUTE_REQUEST"
+#define RREP_HEADER "ROUTE_REPLY"
+
+/*-------------------VALUE REPRESENTATION---------*/    // DO NOT MODIFY!!
+#define NODE_REP "%2d"      // DO NOT MODIFY!!
+#define HOPS_REP "%2d"      // DO NOT MODIFY!!
+#define ID_REP "%2d"        // DO NOT MODIFY!!
+#define PAYLOAD_REP "%s"    // DO NOT MODIFY!!
+
+/*-------------------ITEM REPRESENTATION----------*/    // DO NOT MODIFY!!
+#define DEST    "DEST"    VALUES_SEP NODE_REP
+#define SRC     "SRC"     VALUES_SEP NODE_REP
+#define HOPS    "HOPS"    VALUES_SEP HOPS_REP
+#define REQ_ID  "REQ_ID"  VALUES_SEP ID_REP
+#define REP_ID  "REQ_ID"  VALUES_SEP ID_REP
+#define PAYLOAD "PAYLOAD" VALUES_SEP PAYLOAD_REP
+
+/*-------------------PACKAGES REPRESENTATION------*/    // DO NOT MODIFY!!
+#define DATA_REP DATA_HEADER ITEM_SEP DEST   ITEM_SEP PAYLOAD
+#define RREQ_REP RREQ_HEADER ITEM_SEP REQ_ID ITEM_SEP DEST ITEM_SEP SRC ITEM_SEP
+#define RREP_REP RREP_HEADER ITEM_SEP REP_ID ITEM_SEP DEST ITEM_SEP SRC ITEM_SEP HOPS ITEM_SEP
+
+/*-------------------PACKAGES LENGTH--------------*/    // DO NOT MODIFY!!
+#define DATA_PACKET_LEN sizeof(DATA_REP)-1 - 3 + DATA_PAYLOAD_LEN
+#define RREQ_PACKET_LEN sizeof(RREQ_REP)-1 - 3
+#define RREP_PACKET_LEN sizeof(RREP_REP)-1 - 4
+
+
+
+/******************************************************************/
+/*-----------------------FUNCTION PROTOTYPES----------------------*/
+
+/*-------------------struct to packet------*/
+void data2packet(struct DATA_PACKET* data, char* packet);
+void rreq2packet(struct RREQ_PACKET* rreq, char* packet);
+void rrep2packet(struct RREP_PACKET* rrep, char* packet);
+
+/*-------------------packet to struct------*/
+char packet2data(char* packet, struct DATA_PACKET* data);
+char packet2rreq(char* packet, struct RREQ_PACKET* rreq);
+char packet2rrep(char* packet, struct RREP_PACKET* rrep);
+
 
 
 /**************************************************************************/
 /*------------------------DEFINES-----------------------------------------*/
 
 /*-----------NODES---------------------------*/
-#define MAX_NODES 8     // total number of nodes 
+#define MAX_NODES 3     // total number of nodes 
 #define MAX_DATA_IN_QUEUE 10    // Maximum data packages waiting to be sent
 #define DISCO_SIZE MAX_NODES*MAX_NODES//------------ DO NOT MODIFY!!
 
@@ -90,7 +206,7 @@ AUTOSTART_PROCESSES(&initializer,
 /*-------------------------GLOBAL VARIABLES-------------------------------*/
 
 // Debugging
-static char dbg = 0;
+static char dbg = 1;
 
 // Connections
 static struct unicast_conn rrep_conn;
@@ -199,7 +315,7 @@ PROCESS_THREAD(data_handler, ev, data)
         
     // Introduces randomicity to reduce conflicts at beginning
     initial_delay = random_rand() % DATA_PACKAGE_DELTA_TIME;
-    etimer_set(&et, (CLOCK_CONF_SECOND) * initial_delay );
+    etimer_set(&et, (CLOCK_SECOND) * initial_delay );
 
     while(1)
     {
@@ -224,7 +340,7 @@ PROCESS_THREAD(data_handler, ev, data)
                         dest, data_pkg.payload);
 
             // wait for 30 secs before sending a new mex
-            etimer_set(&et, CLOCK_CONF_SECOND * DATA_PACKAGE_DELTA_TIME);
+            etimer_set(&et, CLOCK_SECOND * DATA_PACKAGE_DELTA_TIME);
         } 
         // case the event is generated by the data message CALLBACK, i.e. forward of data package
         else
@@ -276,15 +392,16 @@ PROCESS_THREAD(aging, ev, data)
     
     PROCESS_BEGIN();
     
-    leds_off(LEDS_RED);
+    //leds_off(LEDS_RED);
     
     while(1)
     {
-        etimer_set(&et, CLOCK_CONF_SECOND);
+        etimer_set(&et, 10 * CLOCK_SECOND);
         
-        PROCESS_WAIT_EVENT_UNTIL(ev != sensors_event);
+		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+        //PROCESS_WAIT_EVENT_UNTIL(ev != sensors_event);
         
-        leds_off(LEDS_RED);
+        //leds_off(LEDS_RED);
         
         // Clean routingTable
         flag = 0;
@@ -559,9 +676,8 @@ static void sendrreq(struct RREQ_PACKET* rreq)
     packetbuf_clear();
     packetbuf_copyfrom(packet, RREQ_PACKET_LEN); 
     broadcast_send(&rreq_conn);
-    
-    printf("Broadcasting ROUTE_REQUEST toward %d [ID:%d, Dest:%d, Src:%d]\n",
-            rreq->dest, rreq->req_id, rreq->dest, rreq->src);
+    printf("R_REQ [ID:%d, Dest:%d, Src:%d]\n",
+            rreq->req_id, rreq->dest, rreq->src);
 }
 
 
@@ -612,7 +728,8 @@ static void addEntryToDiscoveryTable(struct DISCOVERY_TABLE_ENTRY* rreq_info)
             break;
         }
     }
-    printDiscoveryTable();
+	if(dbg) printf("Adding entry to discovery table\n");
+    //printDiscoveryTable();
 }
 
 // clears discovery entry
@@ -698,7 +815,7 @@ static void printRoutingTable()
     {
         if(routingTable[i].valid!= 0)
         {
-            printf("\n   {RouteT: Dest:%d; Next:%d; Hops:%d; Age:%d}",
+            printf("\n {RouteT: Dest:%d; Next:%d; Hops:%d; Age:%d}",
                     routingTable[i].dest, routingTable[i].next,
                     routingTable[i].hops, routingTable[i].age);
             flag ++;
@@ -720,7 +837,7 @@ static void printDiscoveryTable()
     {
         if(discoveryTable[i].valid!= 0)
         {
-            printf("\n    {DiscoveryT:ID:%d; Src:%d; Dest:%d; Snd:%d;}",
+            printf("{ID:%d; Src:%d; Dest:%d; Snd:%d;} \n",
                     discoveryTable[i].req_id,
                     discoveryTable[i].src,
                     discoveryTable[i].dest,
@@ -729,9 +846,7 @@ static void printDiscoveryTable()
         }
     }
     if(flag==0)
-        printf(" Discovery Table is empty \n");
-    else
-        printf("\n");
+        printf("Discovery Table is empty \n");
 }
 
 // prints Waiting table
@@ -754,4 +869,109 @@ static void printWaitingTable()
         printf(" is empty \n");
     else
         printf("\n");
+}
+
+/*************************************************************************************/
+/*-----------------------PART RREQ PACKET SUPPORTING FUNC---------------------------------------*/
+
+/*---------------------struct to packet-----------------------*/
+
+void rreq2packet(struct RREQ_PACKET* rreq, char* packet) {
+	sprintf(packet, RREQ_REP, rreq->req_id, rreq->dest, rreq->src);
+}
+
+void rrep2packet(struct RREP_PACKET* rrep, char* packet) {
+	sprintf(packet, RREP_REP, rrep->req_id, rrep->dest, rrep->src, rrep->hops);
+}
+
+void data2packet(struct DATA_PACKET* data, char* packet) {
+	sprintf(packet, DATA_REP, data->dest, data->payload);
+}
+
+
+/*---------------------packet to struct------------------------*/
+
+// read route request package
+char packet2rreq(char* packet, struct RREQ_PACKET* rreq)
+{
+	static char reqId[2];
+	static char src[2];
+	static char dest[2];
+	if (strncmp(packet, RREQ_HEADER, sizeof(RREQ_HEADER) - 1) == 0)
+	{
+		// id
+		int idx = sizeof(RREQ_HEADER) - 1 + sizeof(ITEM_SEP) - 1 + sizeof(REQ_ID) - 1 - (sizeof(ID_REP) - 1);
+		reqId[0] = packet[idx];
+		reqId[1] = packet[idx + 1];
+		rreq->req_id = atoi(reqId);
+		// dest
+		idx += 2 + sizeof(ITEM_SEP) - 1 + sizeof(DEST) - 1 - (sizeof(NODE_REP) - 1);
+		dest[0] = packet[idx];
+		dest[1] = packet[idx + 1];
+		rreq->dest = atoi(dest);
+		// source
+		idx += 2 + sizeof(ITEM_SEP) - 1 + sizeof(SRC) - 1 - (sizeof(NODE_REP) - 1);
+		src[0] = packet[idx];
+		src[1] = packet[idx + 1];
+		rreq->src = atoi(src);
+
+		return 1;
+	}
+	return 0;
+}
+
+// read route reply packet
+char packet2rrep(char* packet, struct RREP_PACKET* rrep)
+{
+	static char repId[2];
+	static char src[2];
+	static char dest[2];
+	static char hops[2];
+	if (strncmp(packet, RREP_HEADER, sizeof(RREP_HEADER) - 1) == 0)
+	{
+		// id
+		int idx = sizeof(RREP_HEADER) - 1 + sizeof(ITEM_SEP) - 1 + sizeof(REP_ID) - 1 - (sizeof(ID_REP) - 1);
+		repId[0] = packet[idx];
+		repId[1] = packet[idx + 1];
+		rrep->req_id = atoi(repId);
+		// dest
+		idx += 2 + sizeof(ITEM_SEP) - 1 + sizeof(DEST) - 1 - (sizeof(NODE_REP) - 1);
+		dest[0] = packet[idx];
+		dest[1] = packet[idx + 1];
+		rrep->dest = atoi(dest);
+		// source
+		idx += 2 + sizeof(ITEM_SEP) - 1 + sizeof(SRC) - 1 - (sizeof(NODE_REP) - 1);
+		src[0] = packet[idx];
+		src[1] = packet[idx + 1];
+		rrep->src = atoi(src);
+		// hops
+		idx += 2 + sizeof(ITEM_SEP) - 1 + sizeof(HOPS) - 1 - (sizeof(HOPS_REP) - 1);
+		hops[0] = packet[idx];
+		hops[1] = packet[idx + 1];
+		rrep->hops = atoi(hops);
+
+		return 1;
+	}
+	return 0;
+}
+
+// read data packet
+char packet2data(char* packet, struct DATA_PACKET* data)
+{
+	static char dest[2];
+	if (strncmp(packet, DATA_HEADER, sizeof(DATA_HEADER) - 1) == 0)
+	{
+		// dest
+		int idx = sizeof(DATA_HEADER) - 1 + sizeof(ITEM_SEP) - 1 + sizeof(DEST) - 1 - (sizeof(NODE_REP) - 1);
+		dest[0] = packet[idx];
+		dest[1] = packet[idx + 1];
+		data->dest = atoi(dest);
+
+		// payload
+		idx = idx + 2 + sizeof(ITEM_SEP) - 1 + sizeof(PAYLOAD) - 1 - (sizeof(PAYLOAD_REP) - 1);
+		strncpy(data->payload, packet + idx, DATA_PAYLOAD_LEN);
+
+		return 1;
+	}
+	return 0;
 }
