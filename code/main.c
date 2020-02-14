@@ -500,7 +500,7 @@ static void route_request_callback(struct broadcast_conn *c, const rimeaddr_t *f
         // case duplicated route request
         else
         {
-            printf("Duplicated ROUTE_REQUEST: Discarded!\n");
+			if (dbg) printf("Duplicated ROUTE_REQUEST: Discarded!\n");
         }
     }
     // case unexpected package received
@@ -698,7 +698,7 @@ static void printRoutingTable()
     {
         if(routingTable[i].valid!= 0)
         {
-            printf("\n   {Dest:%d; Next:%d; Hops:%d; Age:%d}",
+            printf("\n   {RouteT: Dest:%d; Next:%d; Hops:%d; Age:%d}",
                     routingTable[i].dest, routingTable[i].next,
                     routingTable[i].hops, routingTable[i].age);
             flag ++;
@@ -720,7 +720,7 @@ static void printDiscoveryTable()
     {
         if(discoveryTable[i].valid!= 0)
         {
-            printf("\n    {ID:%d; Src:%d; Dest:%d; Snd:%d;}",
+            printf("\n    {DiscoveryT:ID:%d; Src:%d; Dest:%d; Snd:%d;}",
                     discoveryTable[i].req_id,
                     discoveryTable[i].src,
                     discoveryTable[i].dest,
@@ -729,7 +729,7 @@ static void printDiscoveryTable()
         }
     }
     if(flag==0)
-        printf(" is empty \n");
+        printf(" Discovery Table is empty \n");
     else
         printf("\n");
 }
