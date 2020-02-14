@@ -1,12 +1,12 @@
 
-#ifndef __SENSORVALUE_H__
-#define __SENSORVALUE_H__
+#ifndef __SENSOR_VALUE_H__
+#define __SENSOR_VALUE_H__
 
 #include "lib/sensors.h"
 #include "dev/sensinode-sensors.h"
 
 /********************************************/
-/*Function name: getBattVol
+/*Function name: get_battery_voltage
 *Description:This function is to get the Battery voltage from sensor in sensinode.
 * Battery Voltage - Only 2/3 of the actual voltage reach the ADC input
 * Using 1.25V ref. voltage would result in 2047 AD conversions all the

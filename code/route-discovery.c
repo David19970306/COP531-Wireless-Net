@@ -194,7 +194,7 @@ void print_route(struct node *node, const rimeaddr_t *dest,
 	uint16_t i = hops;
 	float battery;
 	node += hops - 1;
-	printf("ROUTE_DISCOVERY_REPLY: ");
+	printf("ROUTE_DISCOVERY: reply ");
 	while (i-- > 0) 
 	{
 		battery = (unsigned) node->battery;
@@ -288,9 +288,9 @@ rreq_packet_received(struct netflood_conn *nf, const rimeaddr_t *from,
   struct route_discovery_conn *c = (struct route_discovery_conn *)
     ((char *)nf - offsetof(struct route_discovery_conn, rreqconn));
 
-  printf("ROUTE_DISCOVERY_REQUEST: %d.%d: rreq_packet_received from %d.%d hops %d rreq_id %d last %d.%d/%d\n",
-	 rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
-	 from->u8[0], from->u8[1],
+  printf("ROUTE_DISCOVERY: request received orig %d.%d from %d.%d hops %d rreq_id %d last %d.%d/%d\n",
+   originator->u8[0], originator->u8[1],
+   from->u8[0], from->u8[1],
 	 hops, msg->rreq_id,
      c->last_rreq_originator.u8[0],
      c->last_rreq_originator.u8[1],
@@ -375,11 +375,11 @@ route_discovery_discover(struct route_discovery_conn *c, const rimeaddr_t *addr,
 			 clock_time_t timeout)
 {
   if(rrep_pending) {
-    printf("ROUTE_DISCOVERY: ignoring request because of pending response\n");
+    PRINTF("ROUTE_DISCOVERY: ignoring request because of pending response\n");
     return 0;
   }
 
-  printf("ROUTE_DISCOVERY_REQUEST: sending route request\n");
+  PRINTF("ROUTE_DISCOVERY_REQUEST: sending route request\n");
   ctimer_set(&c->t, timeout, timeout_handler, c);
   rrep_pending = 1;
   send_rreq(c, addr);
