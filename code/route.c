@@ -94,7 +94,7 @@ static void
 periodic(void *ptr)
 {
   struct route_entry *e;
-
+  
   for(e = list_head(route_table); e != NULL; e = list_item_next(e)) {
     e->time++;
     if(e->time >= max_time) {

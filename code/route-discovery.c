@@ -44,7 +44,6 @@
  */
 
 #include "contiki.h"
-#include "net/rime.h"
 
 #include "route.h"
 #include "route-discovery.h"
@@ -130,7 +129,7 @@ send_rrep(struct route_discovery_conn *c, const rimeaddr_t *dest)
   rimeaddr_copy(&rrepmsg->originator, &rimeaddr_node_addr);
   rt = route_lookup(dest);
   if(rt != NULL) {
-    PRINTF("%d.%d: send_rrep to %d.%d via %d.%d\n",
+    printf("%d.%d: send_rrep to %d.%d via %d.%d\n",
 	   rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
 	   dest->u8[0],dest->u8[1],
 	   rt->nexthop.u8[0],rt->nexthop.u8[1]);
@@ -224,7 +223,7 @@ rrep_packet_received(struct unicast_conn *uc, const rimeaddr_t *from)
   float route_index;
   
 
-  PRINTF("%d.%d: rrep_packet_received from %d.%d towards %d.%d len %d\n",
+  printf("%d.%d: rrep_packet_received from %d.%d towards %d.%d len %d\n",
 	 rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
 	 from->u8[0],from->u8[1],
 	 msg->dest.u8[0],msg->dest.u8[1],
@@ -288,13 +287,11 @@ rreq_packet_received(struct netflood_conn *nf, const rimeaddr_t *from,
   struct route_discovery_conn *c = (struct route_discovery_conn *)
     ((char *)nf - offsetof(struct route_discovery_conn, rreqconn));
 
-  printf("ROUTE_DISCOVERY: request received orig %d.%d from %d.%d hops %d rreq_id %d last %d.%d/%d\n",
+  PRINTF("ROUTE_DISCOVERY: request received orig %d.%d from %d.%d hops %d rreq_id %d\n",
    originator->u8[0], originator->u8[1],
    from->u8[0], from->u8[1],
-	 hops, msg->rreq_id,
-     c->last_rreq_originator.u8[0],
-     c->last_rreq_originator.u8[1],
-	 c->last_rreq_id);
+	 hops, msg->rreq_id
+  );
 
   if(!(rimeaddr_cmp(&c->last_rreq_originator, originator) &&
        c->last_rreq_id == msg->rreq_id)) {

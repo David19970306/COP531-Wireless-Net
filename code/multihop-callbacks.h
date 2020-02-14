@@ -1,8 +1,12 @@
 #ifndef __MULTIHOP_CALLBACKS_H__
 #define __MULTIHOP_CALLBACKS_H__
 
+#include <stdio.h>
+
 #include "net/rime/multihop.h"
 #include "packet.h"
+#include "config.h"
+#include "route.h"
 
 rimeaddr_t *
 multihop_forward(struct multihop_conn *ptr,
@@ -21,6 +25,10 @@ multihop_forward(struct multihop_conn *ptr,
   }
 
   route_entry = route_lookup(dest);
+  if (!route_entry)
+  {
+	  return NULL;
+  }
   nexthop = &route_entry->nexthop;
 
   /* Drop if nexthop is the same as prevhop or originator to prevent loops. */

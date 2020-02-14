@@ -35,9 +35,10 @@ PROCESS_THREAD(dest_process, ev, data)
   while(1) {
     static struct etimer et;
     
-    etimer_set(&et, CLOCK_SECOND);
+    etimer_set(&et, DESTINATION_PERIOD);
     
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+
 
   }
 
