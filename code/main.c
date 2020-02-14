@@ -28,6 +28,8 @@
 /*-------------------FIXED SIZES--------*/
 #define DATA_PAYLOAD_LEN 11     // length of payload in data packages
 
+#define GROUP_HEADER 0xc3
+
 
 /******************************************************************/
 /*-------------------------DATA STRUCTURES------------------------*/
@@ -36,53 +38,57 @@
 // data packet
 struct DATA_PACKET {
     uint8_t group_hdr;
-	rimeaddr_t dest;
+	uint16_t dest;
 	char payload[DATA_PAYLOAD_LEN];
+    uint8_t checksum;
 };
 
 // route request packet
 struct RREQ_PACKET {
     uint8_t group_hdr;
 	uint8_t req_id;
-	rimeaddr_t dest;
-	rimeaddr_t src;
+	uint16_t dest;
+	uint16_t src;
 };
 
 // route reply packet
 struct RREP_PACKET {
     uint8_t group_hdr;
 	uint8_t req_id;
-	rimeaddr_t dest;
-	rimeaddr_t src;
-	int hops;
+	uint16_t dest;
+	uint16_t src;
+	uint16_t batt;   // battery level
+    uint16_t rssi;
+    uint8_t hops;   // calculated cost
 };
 
 /*--------------------TABLES-----------------*/
 // routing table entry
 struct ROUTING_TABLE_ENTRY {
-    uint8_t group_hdr;
-	rimeaddr_t dest;
-	rimeaddr_t next;
-	int hops;       // number of hops to destination
-	int age;        // age of current entry
-	int valid;      // bool: is the current entry valid?
+	uint16_t dest;
+	uint16_t next;
+	uint16_t batt;       // battery level
+    uint16_t rssi;       // rssi of the source node
+    uint8_t hops;   // calculated cost
+	uint8_t age;        // age of current entry
+	uint8_t valid;      // bool: is the current entry valid?
 };
 
 // waiting table entry (waiting for route reply)
 struct DISCOVERY_TABLE_ENTRY {
 	uint8_t req_id;
-	rimeaddr_t src;
-	rimeaddr_t dest;
-	int snd;
-	int valid;
-	int age;
+	uint16_t src;
+	uint16_t dest;
+	// uint8_t snd;
+	uint8_t valid;
+	uint8_t age;
 };
 
 // queue entry data packages to be sent
 struct QUEUE_ENTRY {
 	struct DATA_PACKET data_pkg;
-	int age;
-	int valid;
+	uint8_t age;
+	uint8_t valid;
 };
 
 /*------------------------------DEFINE----------------------------*/
@@ -167,13 +173,13 @@ static void data_callback(struct unicast_conn *, const rimeaddr_t *);
 static void route_request_callback(struct broadcast_conn *, const rimeaddr_t *);
 
 // Communication functions
-static void sendrrep(struct RREP_PACKET* rrep, int next);
-static void senddata(struct DATA_PACKET* data, int next);
+static void sendrrep(struct RREP_PACKET* rrep, uint16_t next);
+static void senddata(struct DATA_PACKET* data, uint16_t next);
 static void sendrreq(struct RREQ_PACKET* rreq);
 
 // Tables support functions
-static char updateTables(struct RREP_PACKET * rrep, int from);
-static int getNext(int dest);
+static char updateTables(struct RREP_PACKET * rrep, uint16_t from);
+static uint16_t getNext(uint16_t dest);
 // static void addEntryToRoutingTable(int dest);
 static void addEntryToDiscoveryTable(struct DISCOVERY_TABLE_ENTRY* rreq_info);
 // static int getrrepSender(struct RREP_PACKET* rrep);
@@ -247,9 +253,13 @@ PROCESS_THREAD(initializer, ev, data)
 
     // initialize routing table
     for (i=0; i<MAX_NODES; i++){
-        routingTable[i].dest = i+1;
+        routingTable[i].dest = 0x0000;
+        routingTable[i].next = 0xffff;
+        routingTable[i].batt = 0;
+        routingTable[i].rssi = 0;
         routingTable[i].valid = 0;
-        routingTable[i].hops = INF;
+        routingTable[i].hops = INF;   // the smaller the better
+        routingTable[i].age = 0;
     }
 
     // Route Reply
@@ -289,7 +299,8 @@ PROCESS_THREAD(rreq_handler, ev, data)
         
         rreq_info = (struct DISCOVERY_TABLE_ENTRY*)data;
         rreq.req_id = rreq_info->req_id;
-        rimeaddr_copy(&rreq.src, &rreq_info->src);
+        // rimeaddr_copy(&rreq.src, &rreq_info->src);
+        // rimeaddr_copy(&rreq.dest, &rreq_info->dest);
         rreq.src = rreq_info->src;
         rreq.dest = rreq_info->dest;
                      
@@ -310,8 +321,8 @@ PROCESS_THREAD(data_handler, ev, data)
     static int initial_delay;
         
     static uint8_t req_id = 1; //starting req_id
-    static int dest;
-    static int next;
+    static uint16_t dest;
+    static uint16_t next;
         
     static struct DISCOVERY_TABLE_ENTRY rreq_info;
     static struct DATA_PACKET data_pkg;
@@ -336,9 +347,12 @@ PROCESS_THREAD(data_handler, ev, data)
             if(dbg) printf("Process that sends DATA is awake!\n");
 
             //get a random destination node, but not this one
-            dest = 1 + random_rand() % MAX_NODES;
-            if(dest==rimeaddr_node_addr.u8[0])              //not same node
-                dest = (dest!=MAX_NODES)? dest+1 : 1;   //last node
+            // dest = 1 + random_rand() % MAX_NODES;
+            // if(dest==rimeaddr_node_addr.u8[0])              //not same node
+            //     dest = (dest!=MAX_NODES)? dest+1 : 1;   //last node
+
+            // sent to certain node
+            dest = 0xffee;  // this is node "in2"
             
             getRandomPayload(data_pkg.payload);    
             if(dbg) printf("Ready to send DATA message to %d: {%s}\n",
@@ -371,12 +385,12 @@ PROCESS_THREAD(data_handler, ev, data)
             enque(&data_pkg);
 
             //configuring parameter for the ROUTE_REQ...
-            rimeaddr_t saved_dest;
-            rimeaddr_copy(&rreq_info->src, &rimeaddr_node_addr)
             rreq_info.req_id = req_id;
-            //rreq_info.src = rimeaddr_node_addr.u8[0]; // me
+            // rimeaddr_copy(&rreq_info->src, &rimeaddr_node_addr);
+            // rimeaddr_copy(&rreq_info->dest, &dest);
+            rreq_info.src = (rimeaddr_node_addr.u8[0] << 8) + rimeaddr_node_addr.u8[1]; // me
             rreq_info.dest = dest;
-            rreq_info.snd = rimeaddr_node_addr.u8[0]; // me
+            // rreq_info.snd = rimeaddr_node_addr.u8[0]; // me
                         
             //calls the rreq_handler PROCESS in order to
             process_post(&rreq_handler, PROCESS_EVENT_CONTINUE, &rreq_info);
@@ -395,7 +409,7 @@ PROCESS_THREAD(aging, ev, data)
 {
     static struct etimer et;
     static int i, flag;
-    static int dest, next;
+    static uint16_t dest, next;
     
     PROCESS_BEGIN();
     
@@ -443,7 +457,7 @@ PROCESS_THREAD(aging, ev, data)
                 {
                     discoveryTable[i].valid = 0;
                     printf("ROUTE_REQUEST from %d to %d (ID:%d) has expired!\n",
-                            discoveryTable[i].src->u8[0], discoveryTable[i].dest->u8[0], discoveryTable[i].req_id);
+                            discoveryTable[i].src, discoveryTable[i].dest, discoveryTable[i].req_id);
                     flag++;
                 }
                 discoveryTable[i].age --;
@@ -509,6 +523,7 @@ static void route_reply_callback(struct unicast_conn *c, const rimeaddr_t *from)
 {
     char packet[RREP_PACKET_LEN];
     struct RREP_PACKET rrep;
+    uint16_t u16_from;
     int i;
     
     strncpy(packet, (char *)packetbuf_dataptr(), RREP_PACKET_LEN);
@@ -516,11 +531,12 @@ static void route_reply_callback(struct unicast_conn *c, const rimeaddr_t *from)
     // case ROUTE_REPLY package received 
     if(packet2rrep(packet, &rrep)!=0)
     {
+        u16_from = (from->u8[0] << 8) + from->u8[1];
         printf("ROUTE_REPLY received from %d [ID:%d, Dest:%d, Src:%d, Hops:%d]\n",
-                        from->u8[0], rrep.req_id, rrep.dest, rrep.src, rrep.hops);
+                        u16_from, rrep.req_id, rrep.dest, rrep.src, rrep.hops);
     
         // Check if reply updates table
-        if(updateTables(&rrep, from->u8[0]))
+        if(updateTables(&rrep, u16_from))
         {
             // if the source is not me forward reply to all nodes waiting
             if(rrep.src != rimeaddr_node_addr.u8[0])
@@ -530,7 +546,7 @@ static void route_reply_callback(struct unicast_conn *c, const rimeaddr_t *from)
                     if(discoveryTable[i].valid != 0
                         && discoveryTable[i].req_id == rrep.req_id
                         && discoveryTable[i].dest == rrep.dest){
-                            sendrrep(&rrep, discoveryTable[i].snd); 
+                            sendrrep(&rrep, u16_from); 
                     }
                 }
             }
@@ -589,14 +605,16 @@ static void route_request_callback(struct broadcast_conn *c, const rimeaddr_t *f
     static struct RREQ_PACKET rreq;
     static struct RREP_PACKET rrep;
     static char packet[RREQ_PACKET_LEN];
+    uint16_t u16_from;
     
     strncpy(packet, (char *)packetbuf_dataptr(), RREQ_PACKET_LEN);
+    u16_from = (from->u8[0] << 8) + from->u8[1];
 
     // case ROUTE_REQUEST packge received
     if(packet2rreq(packet, &rreq) != 0)
     {
         printf("ROUTE_REQUEST received from %d [ID:%d, Dest:%d, Src:%d]\n",
-                        from->u8[0], rreq.req_id, rreq.dest->u8[0], rreq.src->u8[0]);
+                        u16_from, rreq.req_id, rreq.dest, rreq.src);
 
         // case destination is me
         if(rreq.dest == rimeaddr_node_addr.u8[0])
@@ -607,7 +625,7 @@ static void route_request_callback(struct broadcast_conn *c, const rimeaddr_t *f
             rrep.hops = 0;
 
             //sends a new ROUTE_REPLY to the ROUTE_REQ sender
-            sendrrep(&rrep, from->u8[0]);
+            sendrrep(&rrep, u16_from);
                         
         }
         // case I am NOT the destination AND the ROUTE_REQ is new
@@ -616,7 +634,7 @@ static void route_request_callback(struct broadcast_conn *c, const rimeaddr_t *f
             rreq_info.req_id = rreq.req_id;
             rreq_info.src = rreq.src;
             rreq_info.dest = rreq.dest;
-            rreq_info.snd = from->u8[0];
+            // rreq_info.snd = from->u8[0];
                     
             //wakes up the process to perform a ROUTE_REQ
             process_post(&rreq_handler, PROCESS_EVENT_CONTINUE, &rreq_info);
@@ -639,13 +657,13 @@ static void route_request_callback(struct broadcast_conn *c, const rimeaddr_t *f
 /*-----------------------COMMUNICATION FUNCTIOS--------------------------------------*/
 
 //Actually sends the ROUTE_REPLY message
-static void sendrrep(struct RREP_PACKET* rrep, int next)
+static void sendrrep(struct RREP_PACKET* rrep, uint16_t next)
 {        
     static char packet[RREP_PACKET_LEN];
     
     static rimeaddr_t to_rimeaddr;
-    to_rimeaddr.u8[0]=next;
-    to_rimeaddr.u8[1]=0;
+    to_rimeaddr.u8[0]=next>>8;
+    to_rimeaddr.u8[1]=next;
     
     rrep2packet(rrep, packet);
     packetbuf_clear();
@@ -657,13 +675,13 @@ static void sendrrep(struct RREP_PACKET* rrep, int next)
 }
 
 //Actually sends the DATA message
-static void senddata(struct DATA_PACKET* data, int next)
+static void senddata(struct DATA_PACKET* data, uint16_t next)
 {        
     static char packet[DATA_PACKET_LEN];
     
     static rimeaddr_t to_rimeaddr;
-    to_rimeaddr.u8[0]=next;
-    to_rimeaddr.u8[1]=0;
+    to_rimeaddr.u8[0]=next>>8;
+    to_rimeaddr.u8[1]=next;
     
     data2packet(data, packet);
     packetbuf_clear();
@@ -692,32 +710,56 @@ static void sendrreq(struct RREQ_PACKET* rreq)
 /*************************************************************************************/
 /*-----------------------TABLES SUPPORT FUNCTIOS-------------------------------------*/
 
-static char updateTables(struct RREP_PACKET * rrep, int from)
+static char updateTables(struct RREP_PACKET * rrep, uint16_t from)
 {
     int d = rrep->dest - 1;
+    int i;
 
-    //if the ROUTE_REPLY received shows a better path 
-    if(rrep->hops < routingTable[d].hops)
-    {
-        //UPDATES the routing discovery table!
-        routingTable[d].dest = rrep->dest;
-        routingTable[d].hops = rrep->hops;             
-        routingTable[d].next = from;
-        routingTable[d].age = ROUTE_EXPIRATION_TIME;
-        routingTable[d].valid = 1;
+    for(i=0; i<MAX_NODES; i++){
+        // update routing table if better path found
+        if(routingTable[i].valid == 1 && routingTable[i].dest == rrep->dest 
+        && rrep->hops < routingTable[i].hops){
+            //UPDATES the routing discovery table!
+        routingTable[i].dest = rrep->dest;
+        routingTable[i].hops = rrep->hops;  
+        //TODO: add ssni and batt           
+        routingTable[i].next = from;
+        routingTable[i].age = ROUTE_EXPIRATION_TIME;
+        routingTable[i].valid = 1;
         if(dbg) printf("Improved ROUTE to %d: %d HOPS!\n",
                 rrep->dest, rrep->hops);
         printRoutingTable();
         return 1;
+        }
     }
+    //if the ROUTE_REPLY received shows a better path 
+    // if(rrep->hops < routingTable[d].hops)
+    // {
+    //     //UPDATES the routing discovery table!
+    //     routingTable[d].dest = rrep->dest;
+    //     routingTable[d].hops = rrep->hops;             
+    //     routingTable[d].next = from;
+    //     routingTable[d].age = ROUTE_EXPIRATION_TIME;
+    //     routingTable[d].valid = 1;
+    //     if(dbg) printf("Improved ROUTE to %d: %d HOPS!\n",
+    //             rrep->dest, rrep->hops);
+    //     printRoutingTable();
+    //     return 1;
+    // }
     return 0;
 }
 
 // Gets the next node for the given destination
-static int getNext(int dest)
+static uint16_t getNext(uint16_t dest)
 {
-    if (routingTable[dest-1].valid != 0)
-        return routingTable[dest-1].next;    
+    int i;
+    for(i=0; i<MAX_NODES; i++){
+        if(routingTable[i].valid != 0 && routingTable[i].dest == dest){
+            return routingTable[i].next;
+        }
+    }
+    // if (routingTable[dest-1].valid != 0)
+    //     return routingTable[dest-1].next;    
     return 0;
 }
 
@@ -730,7 +772,7 @@ static void addEntryToDiscoveryTable(struct DISCOVERY_TABLE_ENTRY* rreq_info)
             discoveryTable[i].req_id = rreq_info->req_id;
             discoveryTable[i].src = rreq_info->src;
             discoveryTable[i].dest = rreq_info->dest;
-            discoveryTable[i].snd = rreq_info->snd;
+            // discoveryTable[i].snd = rreq_info->snd;
             discoveryTable[i].valid = 1;
             discoveryTable[i].age = ROUTE_DISCOVERY_TIME;
             break;
@@ -845,11 +887,10 @@ static void printDiscoveryTable()
     {
         if(discoveryTable[i].valid!= 0)
         {
-            printf("{ID:%d; Src:%d; Dest:%d; Snd:%d;} \n",
+            printf("{ID:%d; Src:%d; Dest:%d;} \n",
                     discoveryTable[i].req_id,
                     discoveryTable[i].src,
-                    discoveryTable[i].dest,
-                    discoveryTable[i].snd);
+                    discoveryTable[i].dest);
             flag++;
         }
     }
