@@ -35,30 +35,34 @@
 /*--------------------PACKETS-----------------*/
 // data packet
 struct DATA_PACKET {
-	int dest;
+    uint8_t group_hdr;
+	rimeaddr_t dest;
 	char payload[DATA_PAYLOAD_LEN];
 };
 
 // route request packet
 struct RREQ_PACKET {
-	int req_id;
-	int dest;
-	int src;
+    uint8_t group_hdr;
+	uint8_t req_id;
+	rimeaddr_t dest;
+	rimeaddr_t src;
 };
 
 // route reply packet
 struct RREP_PACKET {
-	int req_id;
-	int dest;
-	int src;
+    uint8_t group_hdr;
+	uint8_t req_id;
+	rimeaddr_t dest;
+	rimeaddr_t src;
 	int hops;
 };
 
 /*--------------------TABLES-----------------*/
 // routing table entry
 struct ROUTING_TABLE_ENTRY {
-	int dest;
-	int next;
+    uint8_t group_hdr;
+	rimeaddr_t dest;
+	rimeaddr_t next;
 	int hops;       // number of hops to destination
 	int age;        // age of current entry
 	int valid;      // bool: is the current entry valid?
@@ -66,9 +70,9 @@ struct ROUTING_TABLE_ENTRY {
 
 // waiting table entry (waiting for route reply)
 struct DISCOVERY_TABLE_ENTRY {
-	int req_id;
-	int src;
-	int dest;
+	uint8_t req_id;
+	rimeaddr_t src;
+	rimeaddr_t dest;
 	int snd;
 	int valid;
 	int age;
@@ -285,6 +289,7 @@ PROCESS_THREAD(rreq_handler, ev, data)
         
         rreq_info = (struct DISCOVERY_TABLE_ENTRY*)data;
         rreq.req_id = rreq_info->req_id;
+        rimeaddr_copy(&rreq.src, &rreq_info->src);
         rreq.src = rreq_info->src;
         rreq.dest = rreq_info->dest;
                      
@@ -304,7 +309,7 @@ PROCESS_THREAD(data_handler, ev, data)
     static struct etimer et;
     static int initial_delay;
         
-    static int req_id = 1; //starting req_id
+    static uint8_t req_id = 1; //starting req_id
     static int dest;
     static int next;
         
@@ -366,8 +371,10 @@ PROCESS_THREAD(data_handler, ev, data)
             enque(&data_pkg);
 
             //configuring parameter for the ROUTE_REQ...
+            rimeaddr_t saved_dest;
+            rimeaddr_copy(&rreq_info->src, &rimeaddr_node_addr)
             rreq_info.req_id = req_id;
-            rreq_info.src = rimeaddr_node_addr.u8[0]; // me
+            //rreq_info.src = rimeaddr_node_addr.u8[0]; // me
             rreq_info.dest = dest;
             rreq_info.snd = rimeaddr_node_addr.u8[0]; // me
                         
@@ -436,7 +443,7 @@ PROCESS_THREAD(aging, ev, data)
                 {
                     discoveryTable[i].valid = 0;
                     printf("ROUTE_REQUEST from %d to %d (ID:%d) has expired!\n",
-                            discoveryTable[i].src, discoveryTable[i].dest, discoveryTable[i].req_id);
+                            discoveryTable[i].src->u8[0], discoveryTable[i].dest->u8[0], discoveryTable[i].req_id);
                     flag++;
                 }
                 discoveryTable[i].age --;
@@ -589,7 +596,7 @@ static void route_request_callback(struct broadcast_conn *c, const rimeaddr_t *f
     if(packet2rreq(packet, &rreq) != 0)
     {
         printf("ROUTE_REQUEST received from %d [ID:%d, Dest:%d, Src:%d]\n",
-                        from->u8[0], rreq.req_id, rreq.dest, rreq.src);
+                        from->u8[0], rreq.req_id, rreq.dest->u8[0], rreq.src->u8[0]);
 
         // case destination is me
         if(rreq.dest == rimeaddr_node_addr.u8[0])
@@ -670,6 +677,7 @@ static void senddata(struct DATA_PACKET* data, int next)
 //Actually sends the ROUTE_REQUEST message (broadcast)
 static void sendrreq(struct RREQ_PACKET* rreq)
 {        
+
     static char packet[RREQ_PACKET_LEN];
     
     rreq2packet(rreq, packet);
