@@ -196,7 +196,7 @@ float compute_route_index(struct node *node, const uint8_t hops)
 void print_route(struct node *node, const rimeaddr_t *dest, 
 	const uint8_t hops, const float route_index)
 {
-	uint16_t i = hops;
+	uint8_t i = hops;
 	float battery;
 	node += hops - 1;
 	printf("ROUTE_DISCOVERY: reply ");

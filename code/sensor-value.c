@@ -103,7 +103,7 @@ uint16_t get_light()
 *Return :
 *		$TempVal: the value of temperature.
 *********************************************/
-uint16_t get_temp() {
+uint16_t get_temperature() {
 	struct sensors_sensor *sensor;
 	int rv;
 	float value;

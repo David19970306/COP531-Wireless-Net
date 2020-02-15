@@ -7,6 +7,6 @@
 
 uint16_t get_battery_voltage();
 uint16_t get_light();
-uint16_t get_temp();
+uint16_t get_temperature();
 
 #endif

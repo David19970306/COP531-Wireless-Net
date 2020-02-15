@@ -43,11 +43,11 @@ send_packet(const rimeaddr_t *dest, uint8_t disp_value)
   packet->ack = 0;
   packet->battery = get_battery_voltage();
   packet->light = get_light();
-  packet->temp = get_temp();
+  packet->temperature = get_temperature();
   packet->disp = disp_value;
 
   if(dbg) printf("Sending data content:batt[%u]light[%u]temp[%u];d[%u]\n",
-	  packet->battery, packet->light, packet->temp, packet->disp);
+	  packet->battery, packet->light, packet->temperature, packet->disp);
   return multihop_send(&mc, dest);
 }
 /*---------------------------------------------------------------------------*/
