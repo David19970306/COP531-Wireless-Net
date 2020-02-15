@@ -24,13 +24,15 @@ static struct multihop_conn mc;
 static struct route_discovery_conn rc;
 /*---------------------------------------------------------------------------*/
 static uint8_t disp_value = 0;//change the display value (Temperature or Light)
-static uint8_t disp_switch = 0;//Switch the mode of sending data.(send manually or periodically)
+static uint8_t disp_switch = 0;//Switch the mode of sending data.(turn on/off send periodically)
+static clock_time_t time;
 /*---------------------------------------------------------------------------*/
 // sensinode sensors
 extern const struct sensors_sensor button_1_sensor, button_2_sensor;
 static uint8_t dbg = 1;
 
-/*---------------------------------------------------------------------------*/int
+/*---------------------------------------------------------------------------*/
+int
 send_packet(const rimeaddr_t *dest, uint8_t disp_value)
 {
   struct packet *packet;
@@ -44,6 +46,8 @@ send_packet(const rimeaddr_t *dest, uint8_t disp_value)
   packet->temp = get_temp();
   packet->disp = disp_value;
 
+  if(dbg) printf("Sending data content:batt[%u]light[%u]temp[%u];d[%u]\n",
+	  packet->battery, packet->light, packet->temp, packet->disp);
   return multihop_send(&mc, dest);
 }
 /*---------------------------------------------------------------------------*/
@@ -67,7 +71,8 @@ static const struct multihop_callbacks multihop_callbacks = {
   multihop_received, multihop_forward 
 };
 /*---------------------------------------------------------------------------*/
-static clock_time_t time;
+
+
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(source_process, ev, data)
 {
