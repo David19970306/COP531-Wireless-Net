@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include "contiki.h"
 #include "dev/button-sensor.h"
+#include "dev/sensinode-sensors.h"
 #include "dev/leds.h"
 #include "net/rime/multihop.h"
 #include "net/packetbuf.h"
@@ -12,14 +13,25 @@
 #include "packet.h"
 #include "sensor-value.h"
 
+
+
 /*---------------------------------------------------------------------------*/
 PROCESS(source_process, "Source");
-AUTOSTART_PROCESSES(&source_process);
+PROCESS(button_stats, "Change state of the button");
+AUTOSTART_PROCESSES(&source_process, &button_stats);
 /*---------------------------------------------------------------------------*/
 static struct multihop_conn mc;
 static struct route_discovery_conn rc;
+/*---------------------------------------------------------------------------*/
+static uint8_t disp_value = 0;//change the display value (Temperature or Light)
+static uint8_t disp_switch = 0;//Switch the mode of sending data.(send manually or periodically)
+/*---------------------------------------------------------------------------*/
+// sensinode sensors
+extern const struct sensors_sensor button_1_sensor, button_2_sensor;
+static uint8_t dbg = 1;
+
 /*---------------------------------------------------------------------------*/int
-send_packet(const rimeaddr_t *dest)
+send_packet(const rimeaddr_t *dest, uint8_t disp_value)
 {
   struct packet *packet;
   
@@ -29,6 +41,8 @@ send_packet(const rimeaddr_t *dest)
   packet->ack = 0;
   packet->battery = get_battery_voltage();
   packet->light = get_light();
+  packet->temp = get_temp();
+  packet->disp = disp_value;
 
   return multihop_send(&mc, dest);
 }
@@ -81,17 +95,43 @@ PROCESS_THREAD(source_process, ev, data)
     
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
-
-    if (send_packet(&dest))
-    {
-	  printf("MULTIHOP_SEND: Sending packet toward %d.%d.\n", dest.u8[0], dest.u8[1]);
-      continue;
-    }
-    route_discovery_discover(&rc, &dest, ROUTE_DISCOVERY_TIMEOUT);
+	if (disp_switch) {
+		// send packet
+		if (send_packet(&dest, disp_value))
+		{
+			printf("MULTIHOP_SEND: Sending packet toward %d.%d.\n", dest.u8[0], dest.u8[1]);
+			continue;
+		}
+		route_discovery_discover(&rc, &dest, ROUTE_DISCOVERY_TIMEOUT);
+	}
 
   }
 
   PROCESS_END();
+}
+
+PROCESS_THREAD(button_stats, ev, data)
+{
+	struct sensors_sensor *sensor;
+	PROCESS_BEGIN();
+	
+	while (1) {
+		PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event);
+
+		sensor = (struct sensors_sensor *)data;
+		if (sensor == &button_1_sensor) {
+			// switch on/off sending data
+			disp_switch = !disp_switch;
+			if (dbg) printf("Disp Button Pressed,Val:[%d]\n", disp_switch);
+		}
+		else if (sensor == &button_2_sensor) {
+			// switch which value to be displayed
+			disp_value = !disp_value;
+			if (dbg) printf("Switch Value Button Pressed,Val:[%d]\n", disp_value);
+		}
+	}
+	PROCESS_END();
+
 }
 
 

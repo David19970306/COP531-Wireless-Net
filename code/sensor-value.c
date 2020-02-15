@@ -82,3 +82,43 @@ uint16_t get_light()
 	
 	return result;
 }
+
+
+/********************************************/
+/*Function name: getTemp
+*Description:This function is to get the value of temperature from sensor in sensinode.
+* Using 1.25V ref. voltage (1250mV).
+* Typical Voltage at 0°C : 743 mV
+* Typical Co-efficient   : 2.45 mV/°C
+* Offset at 25°C         : 30 (this varies and needs calibration)
+*
+* Thus, at 12bit resolution:
+*
+*     ADC x 1250 / 2047 - (743 + 30)    0.61065 x ADC - 773
+* T = ------------------------------ ~= ------------------- °C
+*                 2.45                         2.45
+*
+*Parameters:
+*		None.
+*Return :
+*		$TempVal: the value of temperature.
+*********************************************/
+uint16_t get_temp() {
+	struct sensors_sensor *sensor;
+	int rv;
+	float value;
+	uint16_t result = 0;
+
+	sensor = sensors_find(ADC_SENSOR);
+	if (sensor == NULL) {
+		return 0;
+	}
+	rv = sensor->value(ADC_SENSOR_TYPE_TEMP);
+	if (rv != -1) {
+		value = ((rv * 0.61065 - 773) / 2.45);
+		result = (uint16_t)value;
+		return result;
+	}
+	else
+		return 0;
+}
