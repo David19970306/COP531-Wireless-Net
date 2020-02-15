@@ -3,15 +3,15 @@
 #define SENSOR_VALUE_H
 
 //Get the Supply Voltage from sensor.
-uint16_t getSupplyVol(struct sensors_sensor * sensor);
+uint16_t getSupplyVol();
 
 //Get the Battery Voltage from sensor.
-uint16_t getBattVol(struct sensors_sensor * sensor);
+uint16_t getBattVol();
 
 //Get the value of light from sensor.
-uint16_t getLight(struct sensors_sensor * sensor);
+uint16_t getLight();
 
 //Get the value of temperature from sensor.
-uint16_t getTemp(struct sensors_sensor * sensor);
+uint16_t getTemp();
 
 #endif
