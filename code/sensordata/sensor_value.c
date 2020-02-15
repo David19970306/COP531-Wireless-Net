@@ -23,6 +23,8 @@
 #define putchar(...)
 #endif
 
+//it means that it can not get the value of sensor
+#define ERROR 0
 /* Sensor Values */
 static int rv;
 static float sane = 0;
@@ -31,6 +33,7 @@ static float frac;
 static int VDD;
 
 uint16_t results;
+struct sensors_sensor * sensor;
 
 /********************************************/
 /*Function name: getSupplyVol
@@ -48,14 +51,20 @@ uint16_t results;
 *Return :
 *		$SupplyVol: the voltage of supply.
 *********************************************/
-uint16_t getSupplyVol(struct sensors_sensor * sensor) {
-	
+uint16_t getSupplyVol() {
+	sensor = sensors_find(ADC_SENSOR);
+	if (sensor == NULL) {
+		return ERROR;
+	}
 	rv = sensor->value(ADC_SENSOR_TYPE_VDD);
 	if (rv != -1) {
 		sane = rv * 3.75 / 2047;
-		results = (uint16_t)(sane*100);
+		results = (uint16_t)(sane * 100);
+		return results;
 	}
-	return results;
+	else
+		return ERROR;
+	
 }
 
 
@@ -84,17 +93,23 @@ uint16_t getSupplyVol(struct sensors_sensor * sensor) {
 *Return :
 *		$SupplyVol: the voltage of supply.
 *********************************************/
-uint16_t getBattVol(struct sensors_sensor * sensor) {
+uint16_t getBattVol() {
+		sensor = sensors_find(ADC_SENSOR);
+		if (sensor == NULL) {
+			return ERROR;
+		}
 		rv = sensor->value(ADC_SENSOR_TYPE_BATTERY);
 		VDD = sensor->value(ADC_SENSOR_TYPE_VDD);
-		
-		if (rv != -1) {
+		if (rv != -1 & VDD != -1) {
 			/* Instead of hard-coding 3.3 here, use the latest VDD (stored in dec)
 			 * (slightly inaccurate still, but better than crude 3.3) */
 			sane = (11.25 * rv * VDD) / (0x7FE002);
-			results =(uint16_t)(sane*100);
+			results = (uint16_t)(sane * 100);
+			return results;
 		}
-		return results;
+		else
+			return ERROR;
+		
 	}
 
 /********************************************/
@@ -114,14 +129,21 @@ uint16_t getBattVol(struct sensors_sensor * sensor) {
 *Return :
 *		$LightVal: the value of light.
 *********************************************/
-uint16_t getLight(struct sensors_sensor * sensor) {
+uint16_t getLight() {
+	sensor = sensors_find(ADC_SENSOR);
+	if (sensor == NULL) {
+		return ERROR;
+	}
 	rv = sensor->value(ADC_SENSOR_TYPE_LIGHT);
 	if (rv != -1) {
 		sane = (float)(rv * 0.4071);
 		results = (uint16_t)sane;
+		return results;
 	}
+	else
+		return ERROR;
 	
-	return results;
+	
 }
 
 /********************************************/
@@ -143,11 +165,18 @@ uint16_t getLight(struct sensors_sensor * sensor) {
 *Return :
 *		$TempVal: the value of temperature.
 *********************************************/
-uint16_t getTemp(struct sensors_sensor * sensor) {
+uint16_t getTemp() {
+	sensor = sensors_find(ADC_SENSOR);
+	if (sensor == NULL) {
+		return ERROR;
+	}
 	rv = sensor->value(ADC_SENSOR_TYPE_TEMP);
 	if (rv != -1) {
 		sane = ((rv * 0.61065 - 773) / 2.45);
 		results = (uint16_t)sane;
+		return results;
 	}
-	return results;
+	else
+		return ERROR;
+	
 }
