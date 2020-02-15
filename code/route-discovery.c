@@ -76,6 +76,7 @@ struct rrep_hdr {
   rimeaddr_t dest;
   rimeaddr_t originator;
   uint8_t group_num;
+  uint16_t request_rssi;
 };
 
 #if CONTIKI_TARGET_NETSIM
@@ -117,7 +118,7 @@ send_rreq(struct route_discovery_conn *c, const rimeaddr_t *dest)
 }
 /*---------------------------------------------------------------------------*/
 static void
-send_rrep(struct route_discovery_conn *c, const rimeaddr_t *dest)
+send_rrep(struct route_discovery_conn *c, const rimeaddr_t *dest, const uint16_t request_rssi)
 {
   struct rrep_hdr *rrepmsg;
   struct route_entry *rt;
@@ -133,6 +134,7 @@ send_rrep(struct route_discovery_conn *c, const rimeaddr_t *dest)
   rimeaddr_copy(&rrepmsg->dest, dest);
   rimeaddr_copy(&rrepmsg->originator, &rimeaddr_node_addr);
   rrepmsg->group_num = GROUP_NUMBER;
+  rrepmsg->request_rssi = request_rssi;
   rt = route_lookup(dest);
   if(rt != NULL) {
     PRINTF("%d.%d: send_rrep to %d.%d via %d.%d\n",
@@ -178,9 +180,9 @@ insert_route(const rimeaddr_t *originator, const rimeaddr_t *last_hop,
 }*/
 }
 /*---------------------------------------------------------------------------*/
-float compute_route_index(struct node *node, const uint8_t hops)
+float compute_route_index(struct node *node, const uint8_t hops, const uint16_t request_rssi)
 {
-	int rssi_sum = 0;
+	int rssi_sum = request_rssi;
 	uint8_t i = hops;
 	float route_index;
 	while (i-- > 0)
@@ -194,7 +196,9 @@ float compute_route_index(struct node *node, const uint8_t hops)
 }
 /*---------------------------------------------------------------------------*/
 void print_route(struct node *node, const rimeaddr_t *dest, 
-	const uint8_t hops, const float route_index)
+	const uint8_t hops, const float route_index, 
+	const uint16_t request_rssi
+)
 {
 	uint8_t i = hops;
 	float battery;
@@ -211,7 +215,9 @@ void print_route(struct node *node, const rimeaddr_t *dest,
 		);
 		node -= 1;
 	}
-	printf("%d.%d INDEX = %d.%02u\n", dest->u8[0], dest->u8[1],
+	printf("%d.%d (%d) INDEX = %d.%02u\n", 
+		dest->u8[0], dest->u8[1],
+		request_rssi,
 		get_decimal(route_index), get_fraction(route_index)
 	);
 }
@@ -256,9 +262,9 @@ rrep_packet_received(struct unicast_conn *uc, const rimeaddr_t *from)
   current_node->battery = get_battery_voltage();
   current_node->rssi = packetbuf_attr(PACKETBUF_ATTR_RSSI);
   
-  route_index = compute_route_index(first_node, msg->hops);
+  route_index = compute_route_index(first_node, msg->hops, msg->request_rssi);
   
-  print_route(first_node, &msg->originator, msg->hops, route_index);
+  print_route(first_node, &msg->originator, msg->hops, route_index, msg->request_rssi);
 
   // insert_route(&msg->originator, from, -route_index);
   route_add(&msg->originator, from, -route_index, 0);
@@ -333,7 +339,7 @@ rreq_packet_received(struct netflood_conn *nf, const rimeaddr_t *from,
       insert_route(originator, from, hops, - (int) packetbuf_attr(PACKETBUF_ATTR_RSSI));
       
       /* Send route reply back to source. */
-      send_rrep(c, originator);
+      send_rrep(c, originator, packetbuf_attr(PACKETBUF_ATTR_RSSI));
       return 0; /* Don't continue to flood the rreq packet. */
     } else {
       /*      PRINTF("route request for %d\n", msg->dest_id);*/

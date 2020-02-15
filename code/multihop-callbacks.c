@@ -49,8 +49,10 @@ multihop_forward(struct multihop_conn *ptr,
   packet = packetbuf_dataptr();
   current_node = (void *) (packet + 1);
   current_node += hops;
-  
-  packet->route_index = route_entry->cost * 100;
+  if (hops == 0)
+  {
+	  packet->route_index = route_entry->cost * 100;
+  }
   // current_node->battery = get_battery_voltage();
   rimeaddr_copy(&current_node->addr, &rimeaddr_node_addr);
   // current_node->rssi = (hops==0) ? 0 : packetbuf_attr(PACKETBUF_ATTR_RSSI);
@@ -69,6 +71,8 @@ void
 multihop_print_route(struct node *node, const uint8_t hops, float route_index)
 {
 	uint8_t i = hops;
+	route_index /= 100.0;
+	
 	printf("MULTIHOP_RECEIVED: orig ");
 	while (i-- > 0) 
 	{
@@ -94,7 +98,7 @@ multihop_received(struct multihop_conn *ptr,
   float light;
   struct node *first_node = (void *) (packet + 1);
   
-  multihop_print_route(first_node, hops, (packet->route_index/100));
+  multihop_print_route(first_node, hops, packet->route_index);
 
   // printf("MULTIHOP_RECEIVED: orig %d.%d last %d.%d hops %d\n",
     // sender->u8[0], sender->u8[1],
