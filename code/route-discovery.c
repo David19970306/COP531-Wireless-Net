@@ -129,7 +129,7 @@ send_rrep(struct route_discovery_conn *c, const rimeaddr_t *dest)
   rimeaddr_copy(&rrepmsg->originator, &rimeaddr_node_addr);
   rt = route_lookup(dest);
   if(rt != NULL) {
-    printf("%d.%d: send_rrep to %d.%d via %d.%d\n",
+    PRINTF("%d.%d: send_rrep to %d.%d via %d.%d\n",
 	   rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
 	   dest->u8[0],dest->u8[1],
 	   rt->nexthop.u8[0],rt->nexthop.u8[1]);
@@ -223,7 +223,7 @@ rrep_packet_received(struct unicast_conn *uc, const rimeaddr_t *from)
   float route_index;
   
 
-  printf("%d.%d: rrep_packet_received from %d.%d towards %d.%d len %d\n",
+  PRINTF("%d.%d: rrep_packet_received from %d.%d towards %d.%d len %d\n",
 	 rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
 	 from->u8[0],from->u8[1],
 	 msg->dest.u8[0],msg->dest.u8[1],
@@ -375,6 +375,8 @@ route_discovery_discover(struct route_discovery_conn *c, const rimeaddr_t *addr,
     PRINTF("ROUTE_DISCOVERY: ignoring request because of pending response\n");
     return 0;
   }
+  
+  printf("ROUTE_DISCOVERY: Broadcasting request to %d.%d.\n", addr->u8[0], addr->u8[1]);
 
   PRINTF("ROUTE_DISCOVERY_REQUEST: sending route request\n");
   ctimer_set(&c->t, timeout, timeout_handler, c);

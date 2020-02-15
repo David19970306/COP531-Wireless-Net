@@ -8,7 +8,8 @@ DEFINES=MODEL_N740
 # These examples don't need code banking so we turn it off 
 #HAVE_BANKING=1
 
-CONTIKI_PROJECT = main
+CONTIKI_PROJECT = dest source
+PROJECT_SOURCEFILES += multihop-callbacks.c util.c sensor-value.c
 
 all: $(CONTIKI_PROJECT) 
 

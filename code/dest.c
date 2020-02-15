@@ -39,7 +39,6 @@ PROCESS_THREAD(dest_process, ev, data)
     
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
-
   }
 
   PROCESS_END();
