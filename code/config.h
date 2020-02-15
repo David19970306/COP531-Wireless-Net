@@ -16,5 +16,7 @@
 
 #define DESTINATION_PERIOD 10 * CLOCK_SECOND
 
+#define GROUP_NUMBER 0x33
+
 
 #endif

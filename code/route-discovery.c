@@ -49,16 +49,19 @@
 #include "route-discovery.h"
 #include "util.h"
 #include "sensor-value.h"
+#include "config.h"
 
 
 
 #include <stddef.h> /* For offsetof */
 #include <stdio.h>
 
+/* Request data. */
 struct route_msg {
   rimeaddr_t dest;
   uint8_t rreq_id;
   uint8_t pad;
+  uint8_t group_num;
 };
 
 struct node {
@@ -72,6 +75,7 @@ struct rrep_hdr {
   uint8_t hops;
   rimeaddr_t dest;
   rimeaddr_t originator;
+  uint8_t group_num;
 };
 
 #if CONTIKI_TARGET_NETSIM
@@ -105,6 +109,7 @@ send_rreq(struct route_discovery_conn *c, const rimeaddr_t *dest)
 
   msg->pad = 0;
   msg->rreq_id = c->rreq_id;
+  msg->group_num = GROUP_NUMBER;
   rimeaddr_copy(&msg->dest, dest);
 
   netflood_send(&c->rreqconn, c->rreq_id);
@@ -127,6 +132,7 @@ send_rrep(struct route_discovery_conn *c, const rimeaddr_t *dest)
   rrepmsg->hops = 0;
   rimeaddr_copy(&rrepmsg->dest, dest);
   rimeaddr_copy(&rrepmsg->originator, &rimeaddr_node_addr);
+  rrepmsg->group_num = GROUP_NUMBER;
   rt = route_lookup(dest);
   if(rt != NULL) {
     PRINTF("%d.%d: send_rrep to %d.%d via %d.%d\n",
@@ -222,6 +228,11 @@ rrep_packet_received(struct unicast_conn *uc, const rimeaddr_t *from)
   struct node *first_node;
   float route_index;
   
+  if (msg->group_num != GROUP_NUMBER)
+  {
+	  return;
+  }
+  
 
   PRINTF("%d.%d: rrep_packet_received from %d.%d towards %d.%d len %d\n",
 	 rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
@@ -286,6 +297,11 @@ rreq_packet_received(struct netflood_conn *nf, const rimeaddr_t *from,
   struct route_msg *msg = packetbuf_dataptr();
   struct route_discovery_conn *c = (struct route_discovery_conn *)
     ((char *)nf - offsetof(struct route_discovery_conn, rreqconn));
+	
+	if (msg->group_num != GROUP_NUMBER)
+	{
+		return 0;
+	}
 
   PRINTF("ROUTE_DISCOVERY: request received orig %d.%d from %d.%d hops %d rreq_id %d\n",
    originator->u8[0], originator->u8[1],
