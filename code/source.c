@@ -43,7 +43,7 @@ send_packet(const rimeaddr_t *dest, uint8_t disp_value)
 	packetbuf_set_datalen(sizeof(struct packet));
 	packet = packetbuf_dataptr();
 	packet->group_num = GROUP_NUMBER;
-	packet->ack = 9;
+	packet->ack = PRESSURE_UNIQ_NUMBER;
 	packet->battery = get_battery_voltage();
 	packet->light = get_light();
 	packet->temperature = get_temperature();

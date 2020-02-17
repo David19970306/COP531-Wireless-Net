@@ -122,7 +122,7 @@ multihop_received(struct multihop_conn *ptr,
     // hops
   // );
   ack = packet->ack;
-  if (ack == 9) {
+  if (ack == PRESSURE_UNIQ_NUMBER) {
 	  count++;
   }
   else {

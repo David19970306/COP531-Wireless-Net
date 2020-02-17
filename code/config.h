@@ -18,5 +18,7 @@
 
 #define GROUP_NUMBER 0x33
 
+#define PRESSURE_UNIQ_NUMBER 9
+
 
 #endif
