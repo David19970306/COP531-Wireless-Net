@@ -50,7 +50,7 @@ PROCESS_THREAD(dest_process, ev, data)
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
 	if (count != count_tmp) {
-		printf("Total received:[%u], delta[%u]\n", count, count - count_tmp);
+		printf("Total received:[%u]\n", count);
 		count_tmp = count;
 	}
 

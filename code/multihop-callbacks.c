@@ -113,8 +113,6 @@ multihop_received(struct multihop_conn *ptr,
   {
 	  return;
   }
-  
-  multihop_print_route(first_node, hops, packet->route_index);
 
   // printf("MULTIHOP_RECEIVED: orig %d.%d last %d.%d hops %d\n",
     // sender->u8[0], sender->u8[1],
@@ -136,6 +134,7 @@ multihop_received(struct multihop_conn *ptr,
   temperature = packet->temperature;
   temperature /= 100.0;
   if (disp_switch) {
+	  multihop_print_route(first_node, hops, packet->route_index);
 	  if (type) {
 		  printf("DATA_PACKET: light %d.%02u battery %d.%02uV\n",
 			  get_decimal(light), get_fraction(light),

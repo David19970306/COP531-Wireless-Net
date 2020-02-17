@@ -16,12 +16,12 @@
 
 
 /*---------------------------------------------------------------------------*/
-PROCESS(source_process, "Source");
-PROCESS(button_stats, "Change state of the button");
 #if PRESSURE_MODE
 PROCESS(net_pressure_handler, "The test of Net pressure.");
 AUTOSTART_PROCESSES(&net_pressure_handler);
 #else
+PROCESS(source_process, "Source");
+PROCESS(button_stats, "Change state of the button");
 AUTOSTART_PROCESSES(&source_process, &button_stats);
 #endif
 /*---------------------------------------------------------------------------*/
@@ -217,20 +217,23 @@ PROCESS_THREAD(net_pressure_handler, ev, data)
 
 	rtimer_init();
 	start_count = clock_time();
+	for (i = 0; i <= 49; i++) {
+		for (i = 0; i <= 99; i++) {
 
-	for (i = 0; i <= 99; i++) {
+			//wait a little time to control sending speed
+			//delay_usecond(100);
+			pressure_send_packet(&dest, 9);
+			clock_delay(100);
+			//printf("%d\n",i+1);
 
-		//wait a little time to control sending speed
-		//delay_usecond(100);
-		pressure_send_packet(&dest, 9);
-		clock_delay(100);
-		//printf("%d\n",i+1);
-
+		}
+		end_count = clock_time();
+		diff = end_count - start_count;
+		printf("ticks = [~%u ms]\n", diff * 8);
+		etimer_set(&et, CLOCK_SECOND * 2);
+		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+		pressure_send_packet(&dest, 0); // to reset counter
 	}
-	end_count = clock_time();
-	diff = end_count - start_count;
-	printf("ticks = [~%u ms]\n", diff * 8);
-	pressure_send_packet(&dest, 0); // to reset counter
 	PROCESS_END();
 
 }
