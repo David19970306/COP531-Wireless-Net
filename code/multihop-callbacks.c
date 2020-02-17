@@ -65,8 +65,8 @@ multihop_forward(struct multihop_conn *ptr,
 
   printf("MULTIHOP_FORWARD: orig %d.%d dest %d.%d last %d.%d hops %d\n",
     originator->u8[0], originator->u8[1],
-    dest->u8[0], dest->u8[0],  
-    prevhop->u8[0], prevhop->u8[0],
+    dest->u8[0], dest->u8[1],  
+    prevhop->u8[0], prevhop->u8[1],
     hops
   );
 
