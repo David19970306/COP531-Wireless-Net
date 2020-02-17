@@ -336,7 +336,7 @@ rreq_packet_received(struct netflood_conn *nf, const rimeaddr_t *from,
 	     packetbuf_attr(PACKETBUF_ATTR_RSSI),
 	     packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY));
 
-      insert_route(originator, from, hops, 0);
+      insert_route(originator, from, hops, -1);
       
       /* Send route reply back to source. */
       send_rrep(c, originator, packetbuf_attr(PACKETBUF_ATTR_RSSI));
@@ -348,7 +348,7 @@ rreq_packet_received(struct netflood_conn *nf, const rimeaddr_t *from,
 	     hops,
 	     packetbuf_attr(PACKETBUF_ATTR_RSSI),
 	     packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY));
-      insert_route(originator, from, hops, 0);
+      insert_route(originator, from, hops, -1);
     }
     
     return 1;
