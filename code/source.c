@@ -18,11 +18,11 @@
 /*---------------------------------------------------------------------------*/
 PROCESS(source_process, "Source");
 PROCESS(button_stats, "Change state of the button");
-PROCESS(net_pressure_handler, "The test of Net pressure.");
 #if PRESSURE_MODE
+PROCESS(net_pressure_handler, "The test of Net pressure.");
 AUTOSTART_PROCESSES(&net_pressure_handler);
 #else
-AUTOSTART_PROCESSES(&source_process, &button_stats, &net_pressure_handler);
+AUTOSTART_PROCESSES(&source_process, &button_stats);
 #endif
 /*---------------------------------------------------------------------------*/
 static struct multihop_conn mc;
@@ -60,7 +60,7 @@ send_packet(const rimeaddr_t *dest, uint8_t disp_value)
 }
 /*---------------------------------------------------------------------------*/
 int
-pressure_send_packet(const rimeaddr_t *dest)
+pressure_send_packet(const rimeaddr_t *dest, uint8_t reset_hdr)
 {
 	struct packet *packet;
 
@@ -68,7 +68,12 @@ pressure_send_packet(const rimeaddr_t *dest)
 	packetbuf_set_datalen(sizeof(struct packet));
 	packet = packetbuf_dataptr();
 	packet->group_num = GROUP_NUMBER;
-	packet->ack = PRESSURE_UNIQ_NUMBER;
+	if (reset_hdr) { //=0 means reset
+		packet->ack = PRESSURE_UNIQ_NUMBER;
+	}
+	else {
+		packet->ack = 0;
+	}
 	packet->battery = 9999;
 	packet->light = 9999;
 	packet->temperature = 9999;
@@ -181,11 +186,17 @@ PROCESS_THREAD(net_pressure_handler, ev, data)
 	rimeaddr_t dest;
 	dest.u8[0] = 0xFF;
 	dest.u8[1] = 0xEE;
-	PROCESS_EXITHANDLER(multihop_close(&mc);)
+	PROCESS_EXITHANDLER(multihop_close(&mc); route_discovery_close(&rc);)
 	PROCESS_BEGIN();
 
-	//int time_wait_count = 100; //count 4000 = 1s
+	time = clock_time();
+
+	route_discovery_open(&rc, time, ROUTE_DISCOVERY_CHANNEL, &route_discovery_callbacks);
 	multihop_open(&mc, MULTIHOP_CHANNEL, &multihop_callbacks);
+
+	route_init();
+	route_set_lifetime(SOURCE_ROUTE_LIFETIME);
+	//int time_wait_count = 100; //count 4000 = 1s
 	// wait 2 seconds
 	//etimer_set(&et, CLOCK_SECOND * 2);
 	//PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
@@ -211,7 +222,7 @@ PROCESS_THREAD(net_pressure_handler, ev, data)
 
 		//wait a little time to control sending speed
 		//delay_usecond(100);
-		pressure_send_packet(&dest);
+		pressure_send_packet(&dest, 9);
 		clock_delay(100);
 		//printf("%d\n",i+1);
 
@@ -219,6 +230,7 @@ PROCESS_THREAD(net_pressure_handler, ev, data)
 	end_count = clock_time();
 	diff = end_count - start_count;
 	printf("ticks = [~%u ms]\n", diff * 8);
+	pressure_send_packet(&dest, 0); // to reset counter
 	PROCESS_END();
 
 }
