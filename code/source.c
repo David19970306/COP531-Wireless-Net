@@ -19,7 +19,11 @@
 PROCESS(source_process, "Source");
 PROCESS(button_stats, "Change state of the button");
 PROCESS(net_pressure_handler, "The test of Net pressure.");
+#if PRESSURE_MODE
+AUTOSTART_PROCESSES(&net_pressure_handler);
+#else
 AUTOSTART_PROCESSES(&source_process, &button_stats, &net_pressure_handler);
+#endif
 /*---------------------------------------------------------------------------*/
 static struct multihop_conn mc;
 static struct route_discovery_conn rc;
@@ -208,7 +212,7 @@ PROCESS_THREAD(net_pressure_handler, ev, data)
 		//wait a little time to control sending speed
 		//delay_usecond(100);
 		pressure_send_packet(&dest);
-		clock_delay(200);
+		clock_delay(100);
 		//printf("%d\n",i+1);
 
 	}
