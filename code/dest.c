@@ -15,13 +15,13 @@ AUTOSTART_PROCESSES(&dest_process, &button_stats);
 /*---------------------------------------------------------------------------*/
 static struct route_discovery_conn rc;
 static const struct route_discovery_callbacks route_discovery_callbacks = { NULL, NULL };
-int count;
-static int count_tmp = 0;
 /*---------------------------------------------------------------------------*/
 // sensinode sensors
 extern const struct sensors_sensor button_1_sensor, button_2_sensor;
-int disp_value = 0;//change the display value (Temperature or Light)
-int disp_switch = 0;//Switch the mode of sending data.(turn on/off send periodically)
+uint8_t disp_value = 0;//change the display value (Temperature or Light)
+uint8_t disp_switch = 0;//Switch the mode of sending data.(turn on/off send periodically)
+int count;
+static int count_tmp = 0;
 static uint8_t dbg = 1;
 /*---------------------------------------------------------------------------*/
 static struct multihop_conn mc;
