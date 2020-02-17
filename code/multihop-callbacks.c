@@ -47,6 +47,12 @@ multihop_forward(struct multihop_conn *ptr,
   
   packetbuf_set_datalen(sizeof(struct packet) + (hops + 1) * sizeof(struct node));
   packet = packetbuf_dataptr();
+  
+  if (packet->group_num != GROUP_NUMBER)
+  {
+	  return NULL;
+  }
+  
   current_node = (void *) (packet + 1);
   current_node += hops;
   if (hops == 0)
@@ -102,6 +108,11 @@ multihop_received(struct multihop_conn *ptr,
   float light;
   float temperature;
   struct node *first_node = (void *) (packet + 1);
+  
+  if (packet->group_num != GROUP_NUMBER)
+  {
+	  return;
+  }
   
   multihop_print_route(first_node, hops, packet->route_index);
 

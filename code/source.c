@@ -18,8 +18,7 @@
 /*---------------------------------------------------------------------------*/
 PROCESS(source_process, "Source");
 PROCESS(button_stats, "Change state of the button");
-PROCESS(net_pressure_handler, "The test of Net pressure.");
-AUTOSTART_PROCESSES(&source_process, &button_stats, &net_pressure_handler);
+AUTOSTART_PROCESSES(&source_process, &button_stats);
 /*---------------------------------------------------------------------------*/
 static struct multihop_conn mc;
 static struct route_discovery_conn rc;
@@ -41,6 +40,7 @@ send_packet(const rimeaddr_t *dest, uint8_t disp_value)
   packetbuf_clear();
   packetbuf_set_datalen(sizeof(struct packet));
   packet = packetbuf_dataptr();
+  packet->group_num = GROUP_NUMBER;
   packet->ack = 0;
   packet->battery = get_battery_voltage();
   packet->light = get_light();
@@ -136,43 +136,6 @@ PROCESS_THREAD(button_stats, ev, data)
 			if (dbg) printf("Switch Value Button Pressed,Val:[%d]\n", disp_value);
 		}
 	}
-	PROCESS_END();
-
-}
-
-PROCESS_THREAD(net_pressure_handler, ev, data)
-{
-	// define variables
-	int i;
-	rimeaddr_t dest;
-	uint16_t delay_usecond;
-	delay_usecond = 100;
-	struct packet *packet;
-	uint32_t start_tick;
-	uint32_t end_tick;
-
-	PROCESS_EXITHANDLER(multihop_close(&mc);)
-	PROCESS_BEGIN();
-
-	int time_wait_count = 100; //count 4000 = 1s
-	time = clock_time();
-	multihop_open(&mc, MULTIHOP_CHANNEL, &multihop_callbacks);
-	// wait 2 seconds
-	etimer_set(&et, CLOCK_SECOND * 2);
-	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-	// get start time; also clock_time_t clock_time()
-	start_tick = RTIMER_NOW();
-
-	for (i = 0; i <= 99; i++) {
-		//wait a little time to control sending speed
-		delay_usecond(delay_usecond);
-		packetbuf_clear();
-		packetbuf_set_datalen(sizeof(struct packet));
-		packet = packetbuf_dataptr();
-		multihop_send(&mc, dest);
-	}
-	end_tick = RTIMER_NOW();
-	printf("Elapse tick:[%u]", end_tick - start_tick);
 	PROCESS_END();
 
 }
