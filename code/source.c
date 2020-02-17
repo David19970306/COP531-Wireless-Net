@@ -43,11 +43,32 @@ send_packet(const rimeaddr_t *dest, uint8_t disp_value)
 	packetbuf_set_datalen(sizeof(struct packet));
 	packet = packetbuf_dataptr();
 	packet->group_num = GROUP_NUMBER;
-	packet->ack = PRESSURE_UNIQ_NUMBER;
+	packet->ack = 0;
 	packet->battery = get_battery_voltage();
 	packet->light = get_light();
 	packet->temperature = get_temperature();
 	packet->disp = disp_value;
+
+
+	if (dbg) printf("Sending data content:batt[%u]light[%u]temp[%u];d[%u]\n",
+		packet->battery, packet->light, packet->temperature, packet->disp);
+	return multihop_send(&mc, dest);
+}
+/*---------------------------------------------------------------------------*/
+int
+pressure_send_packet(const rimeaddr_t *dest)
+{
+	struct packet *packet;
+
+	packetbuf_clear();
+	packetbuf_set_datalen(sizeof(struct packet));
+	packet = packetbuf_dataptr();
+	packet->group_num = GROUP_NUMBER;
+	packet->ack = PRESSURE_UNIQ_NUMBER;
+	packet->battery = 9999;
+	packet->light = 9999;
+	packet->temperature = 9999;
+	packet->disp = 0;
 
 
 	if (dbg) printf("Sending data content:batt[%u]light[%u]temp[%u];d[%u]\n",
@@ -106,12 +127,12 @@ PROCESS_THREAD(source_process, ev, data)
 
 		if (disp_switch) {
 			// send packet
-			/*if (send_packet(&dest, disp_value))
+			if (send_packet(&dest, disp_value))
 			{
 				printf("MULTIHOP_SEND: Sending packet toward %d.%d.\n", dest.u8[0], dest.u8[1]);
 				continue;
 			}
-			route_discovery_discover(&rc, &dest, ROUTE_DISCOVERY_TIMEOUT);*/
+			route_discovery_discover(&rc, &dest, ROUTE_DISCOVERY_TIMEOUT);
 		}
 
 	}
@@ -157,7 +178,7 @@ PROCESS_THREAD(net_pressure_handler, ev, data)
 	dest.u8[0] = 0xFF;
 	dest.u8[1] = 0xEE;
 	PROCESS_EXITHANDLER(multihop_close(&mc);)
-		PROCESS_BEGIN();
+	PROCESS_BEGIN();
 
 	//int time_wait_count = 100; //count 4000 = 1s
 	multihop_open(&mc, MULTIHOP_CHANNEL, &multihop_callbacks);
@@ -166,19 +187,9 @@ PROCESS_THREAD(net_pressure_handler, ev, data)
 	//PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 	// get start time; also clock_time_t clock_time()
 
-
-	/*packetbuf_clear();
-	packetbuf_set_datalen(sizeof(struct packet));
-	packet = packetbuf_dataptr();
-	packet->ack = 9;
-	packet->battery = get_battery_voltage();
-	packet->light = get_light();
-	packet->temperature = get_temperature();
-	packet->disp = disp_value;*/
-
 	while (1) {
 		route_discovery_discover(&rc, &dest, ROUTE_DISCOVERY_TIMEOUT);
-		etimer_set(&et, CLOCK_SECOND * 2);
+		etimer_set(&et, CLOCK_SECOND * 1);
 		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
 		if (route_lookup(&dest))
@@ -196,8 +207,7 @@ PROCESS_THREAD(net_pressure_handler, ev, data)
 
 		//wait a little time to control sending speed
 		//delay_usecond(100);
-		//multihop_send(&mc, &dest);
-		send_packet(&dest, disp_value);
+		pressure_send_packet(&dest);
 		clock_delay(200);
 		//printf("%d\n",i+1);
 
