@@ -47,6 +47,12 @@ multihop_forward(struct multihop_conn *ptr,
   
   packetbuf_set_datalen(sizeof(struct packet) + (hops + 1) * sizeof(struct node));
   packet = packetbuf_dataptr();
+  
+  if (packet->group_num != GROUP_NUMBER)
+  {
+	  return NULL;
+  }
+  
   current_node = (void *) (packet + 1);
   current_node += hops;
   if (hops == 0)
@@ -100,6 +106,11 @@ multihop_received(struct multihop_conn *ptr,
   float temperature;
   struct node *first_node = (void *) (packet + 1);
   
+  if (packet->group_num != GROUP_NUMBER)
+  {
+	  return;
+  }
+  
   multihop_print_route(first_node, hops, packet->route_index);
 
   // printf("MULTIHOP_RECEIVED: orig %d.%d last %d.%d hops %d\n",
@@ -121,14 +132,9 @@ multihop_received(struct multihop_conn *ptr,
 	  );
   }
   else {
-	  printf("DATA_PACKET: temperature %d.%02C battery %d.%02uV\n",
+	  printf("DATA_PACKET: temperature %d.%02uC battery %d.%02uV\n",
 		  get_decimal(temperature), get_fraction(temperature),
 		  get_decimal(battery), get_fraction(battery)
 	  );
   }
-  printf("DATA_PACKET: light %d.%02u battery %d.%02uV Temperature %d.%02uC\n", 
-    get_decimal(light), get_fraction(light),
-	get_decimal(battery), get_fraction(battery),
-	get_decimal(temperature), get_fraction(temperature)
-  );
 }

@@ -176,7 +176,7 @@ route_lookup(const rimeaddr_t *dest)
 	   uip_ipaddr_to_quad(dest), uip_ipaddr_to_quad(&e->dest));*/
 
     if(rimeaddr_cmp(dest, &e->dest)) {
-      if(e->cost < lowest_cost) {
+      if(e->cost <= lowest_cost) {
 	best_entry = e;
 	lowest_cost = e->cost;
       }
