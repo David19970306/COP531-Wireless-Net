@@ -24,13 +24,14 @@ AUTOSTART_PROCESSES(&source_process, &button_stats, &net_pressure_handler);
 static struct multihop_conn mc;
 static struct route_discovery_conn rc;
 /*---------------------------------------------------------------------------*/
-static uint8_t disp_value = 0;//change the display value (Temperature or Light)
-static uint8_t disp_switch = 0;//Switch the mode of sending data.(turn on/off send periodically)
+uint8_t disp_value = 0;//change the display value (Temperature or Light)
+uint8_t disp_switch = 0;//Switch the mode of sending data.(turn on/off send periodically)
 static clock_time_t time;
 /*---------------------------------------------------------------------------*/
 // sensinode sensors
 extern const struct sensors_sensor button_1_sensor, button_2_sensor;
 static uint8_t dbg = 0;
+int count;
 
 /*---------------------------------------------------------------------------*/
 int
