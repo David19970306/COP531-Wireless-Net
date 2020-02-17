@@ -95,6 +95,9 @@ multihop_received(struct multihop_conn *ptr,
 {
   struct packet *packet = packetbuf_dataptr();
   uint8_t type;
+  uint8_t ack;
+  extern count;
+  extern disp_switch;
   float battery;
   float light;
   float temperature;
@@ -107,6 +110,13 @@ multihop_received(struct multihop_conn *ptr,
     // prevhop->u8[0], prevhop->u8[0],
     // hops
   // );
+  ack = packet->ack;
+  if (ack == 9) {
+	  count++;
+  }
+  else {
+	  count = 0;
+  }
   type = packet->disp;
   battery = packet->battery;
   battery /= 100.0;
@@ -114,21 +124,23 @@ multihop_received(struct multihop_conn *ptr,
   light /= 100.0;
   temperature = packet->temperature;
   temperature /= 100.0;
-  if (type) {
-	  printf("DATA_PACKET: light %d.%02u battery %d.%02uV\n",
-		  get_decimal(light), get_fraction(light),
-		  get_decimal(battery), get_fraction(battery)
-	  );
+  if (disp_switch) {
+	  if (type) {
+		  printf("DATA_PACKET: light %d.%02u battery %d.%02uV\n",
+			  get_decimal(light), get_fraction(light),
+			  get_decimal(battery), get_fraction(battery)
+		  );
+	  }
+	  else {
+		  printf("DATA_PACKET: temperature %d.%02uC battery %d.%02uV\n",
+			  get_decimal(temperature), get_fraction(temperature),
+			  get_decimal(battery), get_fraction(battery)
+		  );
+	  }
   }
-  else {
-	  printf("DATA_PACKET: temperature %d.%02C battery %d.%02uV\n",
-		  get_decimal(temperature), get_fraction(temperature),
-		  get_decimal(battery), get_fraction(battery)
-	  );
-  }
-  printf("DATA_PACKET: light %d.%02u battery %d.%02uV Temperature %d.%02uC\n", 
-    get_decimal(light), get_fraction(light),
-	get_decimal(battery), get_fraction(battery),
-	get_decimal(temperature), get_fraction(temperature)
-  );
+ // printf("DATA_PACKET: light %d.%02u battery %d.%02uV Temperature %d.%02uC\n", 
+ //   get_decimal(light), get_fraction(light),
+	//get_decimal(battery), get_fraction(battery),
+	//get_decimal(temperature), get_fraction(temperature)
+ // );
 }
