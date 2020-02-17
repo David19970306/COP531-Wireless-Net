@@ -22,7 +22,7 @@ PROCESS(net_pressure_handler, "The test of Net pressure.");
 #if PRESSURE_MODE
 AUTOSTART_PROCESSES(&net_pressure_handler);
 #else
-AUTOSTART_PROCESSES(&source_process, &button_stats, &net_pressure_handler);
+AUTOSTART_PROCESSES(&source_process, &button_stats);
 #endif
 /*---------------------------------------------------------------------------*/
 static struct multihop_conn mc;
@@ -35,28 +35,72 @@ static clock_time_t time;
 // sensinode sensors
 extern const struct sensors_sensor button_1_sensor, button_2_sensor;
 static uint8_t dbg = 0;
-int count;
-
+static uint8_t acknowledged;
 /*---------------------------------------------------------------------------*/
-int
+void
+wait_until_route_discovery(const rimeaddr_t *dest)
+{
+	if (!route_lookup(dest))
+	{
+		static struct etimer et;
+		route_discovery_discover(&rc, dest, ROUTE_DISCOVERY_TIMEOUT);
+		etimer_set(&et, ROUTE_DISCOVERY_TIMEOUT*1.2);
+		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+	}
+}
+void
 send_packet(const rimeaddr_t *dest, uint8_t disp_value)
 {
 	struct packet *packet;
+	
+	wait_until_route_discovery(dest);
 
-	packetbuf_clear();
-	packetbuf_set_datalen(sizeof(struct packet));
-	packet = packetbuf_dataptr();
-	packet->group_num = GROUP_NUMBER;
-	packet->ack = 0;
-	packet->battery = get_battery_voltage();
-	packet->light = get_light();
-	packet->temperature = get_temperature();
-	packet->disp = disp_value;
+	printf("MULTIHOP_SEND: Sending packet toward %d.%d.\n", dest->u8[0], dest->u8[1]);
 
+	while (1)
+	{
+		static struct etimer et;
+		acknowledged = 0;
 
-	if (dbg) printf("Sending data content:batt[%u]light[%u]temp[%u];d[%u]\n",
-		packet->battery, packet->light, packet->temperature, packet->disp);
-	return multihop_send(&mc, dest);
+		packetbuf_clear();
+		packetbuf_set_datalen(sizeof(struct packet));
+		packet = packetbuf_dataptr();
+		packet->group_num = GROUP_NUMBER;
+		packet->ack = 0;
+		packet->battery = get_battery_voltage();
+		packet->light = get_light();
+		packet->temperature = get_temperature();
+		packet->disp = disp_value;
+
+		multihop_send(&mc, dest);
+
+		etimer_set(&et, SOURCE_ACK_WAIT_TIME);
+		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+		if (acknowledged)
+		{
+			break;
+		}
+		wait_until_route_discovery(dest);
+	}
+
+}
+/*---------------------------------------------------------------------------*/
+void
+multihop_received(struct multihop_conn *ptr,
+  const rimeaddr_t *sender,
+  const rimeaddr_t *prevhop,
+  uint8_t hops)
+{
+	struct packet *packet = packetbuf_dataptr();
+
+	if (packet->group_num != GROUP_NUMBER)
+	{
+		return;
+	}
+	if (packet->ack)
+	{
+		acknowledged = 1;
+	}
 }
 /*---------------------------------------------------------------------------*/
 int
@@ -130,13 +174,7 @@ PROCESS_THREAD(source_process, ev, data)
 		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
 		if (disp_switch) {
-			// send packet
-			if (send_packet(&dest, disp_value))
-			{
-				printf("MULTIHOP_SEND: Sending packet toward %d.%d.\n", dest.u8[0], dest.u8[1]);
-				continue;
-			}
-			route_discovery_discover(&rc, &dest, ROUTE_DISCOVERY_TIMEOUT);
+			send_packet(&dest, disp_value);
 		}
 
 	}

@@ -20,7 +20,11 @@ static const struct route_discovery_callbacks route_discovery_callbacks = { NULL
 extern const struct sensors_sensor button_1_sensor, button_2_sensor;
 uint8_t disp_value = 0;//change the display value (Temperature or Light)
 uint8_t disp_switch = 0;//Switch the mode of sending data.(turn on/off send periodically)
+
+#if PRESSURE_MODE
 int count;
+#endif
+
 static int count_tmp = 0;
 static uint8_t dbg = 1;
 /*---------------------------------------------------------------------------*/
@@ -31,6 +35,73 @@ static const struct multihop_callbacks multihop_callbacks = {
 /*---------------------------------------------------------------------------*/
 static clock_time_t time;
 /*---------------------------------------------------------------------------*/
+void
+multihop_received(struct multihop_conn *ptr,
+  const rimeaddr_t *sender,
+  const rimeaddr_t *prevhop,
+  uint8_t hops)
+{
+  struct packet *packet = packetbuf_dataptr();
+  uint8_t type;
+#if PRESSURE_MODE
+  extern count;
+#endif
+  extern disp_switch;
+  float battery;
+  float light;
+  float temperature;
+  struct node *first_node = (void *) (packet + 1);
+  
+  if (packet->group_num != GROUP_NUMBER)
+  {
+	  return;
+  }
+
+
+
+#if PRESSURE_MODE
+  if (packet->ack == PRESSURE_UNIQ_NUMBER) {
+	  count++;
+  }
+  else {
+	  count = 0;
+  }
+#else
+  if (packet->ack)
+  {
+  	return;
+  }
+#endif
+
+  packet->ack = 1;
+  multihop_send(&mc, dest);
+  
+  multihop_print_route(first_node, hops, packet->route_index);
+
+  type = packet->disp;
+  battery = packet->battery;
+  battery /= 100.0;
+  light = packet->light;
+  light /= 100.0;
+  temperature = packet->temperature;
+  temperature /= 100.0;
+  if (disp_switch) {
+	  if (type) {
+		  printf("DATA_PACKET: light %d.%02u battery %d.%02uV\n",
+			  get_decimal(light), get_fraction(light),
+			  get_decimal(battery), get_fraction(battery)
+		  );
+	  }
+	  else {
+		  printf("DATA_PACKET: temperature %d.%02uC battery %d.%02uV\n",
+			  get_decimal(temperature), get_fraction(temperature),
+			  get_decimal(battery), get_fraction(battery)
+		  );
+	  }
+  }
+
+
+}
 PROCESS_THREAD(dest_process, ev, data)
 {
   PROCESS_EXITHANDLER(route_discovery_close(&rc); multihop_close(&mc);)
@@ -49,8 +120,10 @@ PROCESS_THREAD(dest_process, ev, data)
     
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
+#if PRESSURE_MODE
 	printf("Total received:[%u], delta[%u]\n", count, count - count_tmp);
 	count_tmp = count;
+#endif
 
   }
 

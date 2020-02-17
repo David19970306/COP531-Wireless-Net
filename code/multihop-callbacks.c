@@ -65,8 +65,8 @@ multihop_forward(struct multihop_conn *ptr,
 
   printf("MULTIHOP_FORWARD: orig %d.%d dest %d.%d last %d.%d hops %d\n",
     originator->u8[0], originator->u8[1],
-    dest->u8[0], dest->u8[0],  
-    prevhop->u8[0], prevhop->u8[0],
+    dest->u8[0], dest->u8[1],  
+    prevhop->u8[0], prevhop->u8[1],
     hops
   );
 
@@ -93,65 +93,3 @@ multihop_print_route(struct node *node, const uint8_t hops, float route_index)
 	);
 }
 
-void
-multihop_received(struct multihop_conn *ptr,
-  const rimeaddr_t *sender,
-  const rimeaddr_t *prevhop,
-  uint8_t hops)
-{
-  struct packet *packet = packetbuf_dataptr();
-  uint8_t type;
-  uint8_t ack;
-  extern count;
-  extern disp_switch;
-  float battery;
-  float light;
-  float temperature;
-  struct node *first_node = (void *) (packet + 1);
-  
-  if (packet->group_num != GROUP_NUMBER)
-  {
-	  return;
-  }
-  
-  multihop_print_route(first_node, hops, packet->route_index);
-
-  // printf("MULTIHOP_RECEIVED: orig %d.%d last %d.%d hops %d\n",
-    // sender->u8[0], sender->u8[1],
-    // prevhop->u8[0], prevhop->u8[0],
-    // hops
-  // );
-  ack = packet->ack;
-  if (ack == PRESSURE_UNIQ_NUMBER) {
-	  count++;
-  }
-  else {
-	  count = 0;
-  }
-  type = packet->disp;
-  battery = packet->battery;
-  battery /= 100.0;
-  light = packet->light;
-  light /= 100.0;
-  temperature = packet->temperature;
-  temperature /= 100.0;
-  if (disp_switch) {
-	  if (type) {
-		  printf("DATA_PACKET: light %d.%02u battery %d.%02uV\n",
-			  get_decimal(light), get_fraction(light),
-			  get_decimal(battery), get_fraction(battery)
-		  );
-	  }
-	  else {
-		  printf("DATA_PACKET: temperature %d.%02uC battery %d.%02uV\n",
-			  get_decimal(temperature), get_fraction(temperature),
-			  get_decimal(battery), get_fraction(battery)
-		  );
-	  }
-  }
- // printf("DATA_PACKET: light %d.%02u battery %d.%02uV Temperature %d.%02uC\n", 
- //   get_decimal(light), get_fraction(light),
-	//get_decimal(battery), get_fraction(battery),
-	//get_decimal(temperature), get_fraction(temperature)
- // );
-}
