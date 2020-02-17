@@ -94,8 +94,10 @@ multihop_received(struct multihop_conn *ptr,
   uint8_t hops)
 {
   struct packet *packet = packetbuf_dataptr();
+  uint8_t type;
   float battery;
   float light;
+  float temperature;
   struct node *first_node = (void *) (packet + 1);
   
   multihop_print_route(first_node, hops, packet->route_index);
@@ -105,12 +107,28 @@ multihop_received(struct multihop_conn *ptr,
     // prevhop->u8[0], prevhop->u8[0],
     // hops
   // );
+  type = packet->disp;
   battery = packet->battery;
   battery /= 100.0;
   light = packet->light;
   light /= 100.0;
-  printf("DATA_PACKET: light %d.%02u battery %d.%02uV\n", 
+  temperature = packet->temperature;
+  temperature /= 100.0;
+  if (type) {
+	  printf("DATA_PACKET: light %d.%02u battery %d.%02uV\n",
+		  get_decimal(light), get_fraction(light),
+		  get_decimal(battery), get_fraction(battery)
+	  );
+  }
+  else {
+	  printf("DATA_PACKET: temperature %d.%02C battery %d.%02uV\n",
+		  get_decimal(temperature), get_fraction(temperature),
+		  get_decimal(battery), get_fraction(battery)
+	  );
+  }
+  printf("DATA_PACKET: light %d.%02u battery %d.%02uV Temperature %d.%02uC\n", 
     get_decimal(light), get_fraction(light),
-	get_decimal(battery), get_fraction(battery)
+	get_decimal(battery), get_fraction(battery),
+	get_decimal(temperature), get_fraction(temperature)
   );
 }

@@ -116,7 +116,7 @@ uint16_t get_temperature() {
 	rv = sensor->value(ADC_SENSOR_TYPE_TEMP);
 	if (rv != -1) {
 		value = ((rv * 0.61065 - 773) / 2.45);
-		result = (uint16_t)value;
+		result = (uint16_t)(value * 100);
 		return result;
 	}
 	else
