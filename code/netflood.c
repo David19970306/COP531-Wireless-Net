@@ -43,7 +43,7 @@
  *         Adam Dunkels <adam@sics.se>
  */
 
-#include "net/rime/netflood.h"
+#include "netflood.h"
 
 #include <string.h>
 
@@ -160,7 +160,7 @@ netflood_close(struct netflood_conn *c)
 }
 /*---------------------------------------------------------------------------*/
 int
-netflood_send(struct netflood_conn *c, uint8_t seqno)
+netflood_send(struct netflood_conn *c, uint16_t seqno)
 {
   if(packetbuf_hdralloc(sizeof(struct netflood_hdr))) {
     struct netflood_hdr *hdr = packetbuf_hdrptr();

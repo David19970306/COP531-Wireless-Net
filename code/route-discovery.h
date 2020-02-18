@@ -59,7 +59,7 @@
 #define __ROUTE_DISCOVERY_H__
 
 #include "net/rime/unicast.h"
-#include "net/rime/netflood.h"
+#include "netflood.h"
 #include "sys/ctimer.h"
 
 struct route_discovery_conn;

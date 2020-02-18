@@ -8,11 +8,7 @@
 #include "route.h"
 #include "util.h"
 
-struct node {
-  rimeaddr_t addr;
-  // uint16_t battery;
-  // uint16_t rssi;
-};
+
 
 rimeaddr_t *
 multihop_forward(struct multihop_conn *ptr,
@@ -62,34 +58,17 @@ multihop_forward(struct multihop_conn *ptr,
   // current_node->battery = get_battery_voltage();
   rimeaddr_copy(&current_node->addr, &rimeaddr_node_addr);
   // current_node->rssi = (hops==0) ? 0 : packetbuf_attr(PACKETBUF_ATTR_RSSI);
-
-  printf("MULTIHOP_FORWARD: orig %d.%d dest %d.%d last %d.%d hops %d\n",
-    originator->u8[0], originator->u8[1],
-    dest->u8[0], dest->u8[1],  
-    prevhop->u8[0], prevhop->u8[1],
-    hops
-  );
+  if (prevhop)
+  {
+	  printf("MULTIHOP_FORWARD: orig %d.%d dest %d.%d last %d.%d hops %d\n",
+		originator->u8[0], originator->u8[1],
+		dest->u8[0], dest->u8[1],  
+		prevhop->u8[0], prevhop->u8[1],
+		hops
+	  );
+  }
 
   return nexthop;
 }
 
-void 
-multihop_print_route(struct node *node, const uint8_t hops, float route_index)
-{
-	uint8_t i = hops;
-	route_index /= 100.0;
-	
-	printf("MULTIHOP_RECEIVED: orig ");
-	while (i-- > 0) 
-	{
-		printf("%d.%d -> ", 
-			node->addr.u8[0], node->addr.u8[1]
-		);
-		node += 1;
-	}
-	printf("%d.%d ROUTE_INDEX = -%d.%02u\n", 
-		rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
-		get_decimal(route_index), get_fraction(route_index)
-	);
-}
 

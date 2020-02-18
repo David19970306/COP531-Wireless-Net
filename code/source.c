@@ -34,56 +34,20 @@ static clock_time_t time;
 /*---------------------------------------------------------------------------*/
 // sensinode sensors
 extern const struct sensors_sensor button_1_sensor, button_2_sensor;
-static uint8_t dbg = 0;
+static uint8_t dbg = 1;
 static uint8_t acknowledged;
 /*---------------------------------------------------------------------------*/
-void
-wait_until_route_discovery(const rimeaddr_t *dest)
+void wait_until_route_discovery(const rimeaddr_t *dest)
 {
-	if (!route_lookup(dest))
-	{
-		static struct etimer et;
-		route_discovery_discover(&rc, dest, ROUTE_DISCOVERY_TIMEOUT);
-		etimer_set(&et, ROUTE_DISCOVERY_TIMEOUT*1.2);
-		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-	}
+
 }
 void
 send_packet(const rimeaddr_t *dest, uint8_t disp_value)
 {
-	struct packet *packet;
-	
-	wait_until_route_discovery(dest);
 
-	printf("MULTIHOP_SEND: Sending packet toward %d.%d.\n", dest->u8[0], dest->u8[1]);
-
-	while (1)
-	{
-		static struct etimer et;
-		acknowledged = 0;
-
-		packetbuf_clear();
-		packetbuf_set_datalen(sizeof(struct packet));
-		packet = packetbuf_dataptr();
-		packet->group_num = GROUP_NUMBER;
-		packet->ack = 0;
-		packet->battery = get_battery_voltage();
-		packet->light = get_light();
-		packet->temperature = get_temperature();
-		packet->disp = disp_value;
-
-		multihop_send(&mc, dest);
-
-		etimer_set(&et, SOURCE_ACK_WAIT_TIME);
-		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-		if (acknowledged)
-		{
-			break;
-		}
-		wait_until_route_discovery(dest);
-	}
 
 }
+
 /*---------------------------------------------------------------------------*/
 void
 multihop_received(struct multihop_conn *ptr,
@@ -150,11 +114,11 @@ static const struct multihop_callbacks multihop_callbacks = {
 PROCESS_THREAD(source_process, ev, data)
 {
 	rimeaddr_t dest;
-	dest.u8[0] = 0xFF;
-	dest.u8[1] = 0xEE;
+	dest.u8[0] = 0xdf;
+	dest.u8[1] = 0xdf;
 	PROCESS_EXITHANDLER(route_discovery_close(&rc); multihop_close(&mc);)
 
-		PROCESS_BEGIN();
+	PROCESS_BEGIN();
 
 	time = clock_time();
 
@@ -168,19 +132,63 @@ PROCESS_THREAD(source_process, ev, data)
 	while (1) {
 
 		static struct etimer et;
+		struct packet *packet;
+		struct route_entry *route_entry;
 
 		etimer_set(&et, SOURCE_PERIOD);
 
 		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
 		if (disp_switch) {
-			send_packet(&dest, disp_value);
-		}
+			printf("MULTIHOP_SEND: Sending packet toward %d.%d.\n", dest.u8[0], dest.u8[1]);
+
+			while (1)
+			{
+				static struct etimer et_delivery;
+				
+				while (!route_lookup(&dest))
+				{
+					static struct etimer et_route_discovery;
+					route_discovery_discover(&rc, &dest, ROUTE_DISCOVERY_TIMEOUT);
+					etimer_set(&et_route_discovery, ROUTE_DISCOVERY_TIMEOUT*1.2);
+					PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et_route_discovery));
+				}
+				
+				acknowledged = 0;
+
+				packetbuf_clear();
+				packetbuf_set_datalen(sizeof(struct packet));
+				packet = packetbuf_dataptr();
+				packet->group_num = GROUP_NUMBER;
+				packet->ack = 0;
+				packet->battery = get_battery_voltage();
+				packet->light = get_light();
+				packet->temperature = get_temperature();
+				packet->disp = disp_value;
+
+				multihop_send(&mc, &dest);
+				
+				etimer_set(&et_delivery, SOURCE_ACK_WAIT_TIME);
+				PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et_delivery));
+				
+				if (acknowledged)
+				{
+					break;
+				}
+				route_entry = route_lookup(&dest);
+				if (route_entry)
+				{
+					route_remove(route_entry);
+				}
+			}
+	}
 
 	}
 
 	PROCESS_END();
 }
+
+
 
 PROCESS_THREAD(button_stats, ev, data)
 {

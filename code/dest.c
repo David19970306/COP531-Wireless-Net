@@ -7,11 +7,17 @@
 #include "route-discovery.h"
 #include "multihop-callbacks.h"
 #include "config.h"
+#include "util.h"
+#include "packet.h"
 
 /*---------------------------------------------------------------------------*/
 PROCESS(dest_process, "Destination");
 PROCESS(button_stats, "Change state of the button");
+#if PRESSURE_MODE
 AUTOSTART_PROCESSES(&dest_process, &button_stats);
+#else
+AUTOSTART_PROCESSES(&dest_process);
+#endif
 /*---------------------------------------------------------------------------*/
 static struct route_discovery_conn rc;
 static const struct route_discovery_callbacks route_discovery_callbacks = { NULL, NULL };
@@ -35,6 +41,26 @@ static const struct multihop_callbacks multihop_callbacks = {
 /*---------------------------------------------------------------------------*/
 static clock_time_t time;
 /*---------------------------------------------------------------------------*/
+
+void 
+multihop_print_route(struct node *node, const uint8_t hops, float route_index)
+{
+	uint8_t i = hops;
+	route_index /= 100.0;
+	
+	printf("MULTIHOP_RECEIVED: orig ");
+	while (i-- > 0) 
+	{
+		printf("%d.%d -> ", 
+			node->addr.u8[0], node->addr.u8[1]
+		);
+		node += 1;
+	}
+	printf("%d.%d ROUTE_INDEX = -%d.%02u\n", 
+		rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
+		get_decimal(route_index), get_fraction(route_index)
+	);
+}
 void
 multihop_received(struct multihop_conn *ptr,
   const rimeaddr_t *sender,
@@ -42,7 +68,6 @@ multihop_received(struct multihop_conn *ptr,
   uint8_t hops)
 {
   struct packet *packet = packetbuf_dataptr();
-  uint8_t type;
 #if PRESSURE_MODE
   extern count;
 #endif
@@ -74,19 +99,20 @@ multihop_received(struct multihop_conn *ptr,
 #endif
 
   packet->ack = 1;
-  multihop_send(&mc, dest);
+  multihop_send(&mc, sender);
   
   multihop_print_route(first_node, hops, packet->route_index);
 
-  type = packet->disp;
   battery = packet->battery;
   battery /= 100.0;
   light = packet->light;
   light /= 100.0;
   temperature = packet->temperature;
   temperature /= 100.0;
+#if PRESSURE_MODE
   if (disp_switch) {
-	  if (type) {
+#endif
+	  if (packet->disp) {
 		  printf("DATA_PACKET: light %d.%02u battery %d.%02uV\n",
 			  get_decimal(light), get_fraction(light),
 			  get_decimal(battery), get_fraction(battery)
@@ -98,7 +124,9 @@ multihop_received(struct multihop_conn *ptr,
 			  get_decimal(battery), get_fraction(battery)
 		  );
 	  }
+#if PRESSURE_MODE
   }
+#endif
 
 
 }

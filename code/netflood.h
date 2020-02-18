@@ -87,7 +87,7 @@ struct netflood_conn;
 
 struct netflood_callbacks {
   int (* recv)(struct netflood_conn *c, const rimeaddr_t *from,
-	       const rimeaddr_t *originator, uint8_t seqno, uint8_t hops);
+	       const rimeaddr_t *originator, uint16_t seqno, uint8_t hops);
   void (* sent)(struct netflood_conn *c);
   void (* dropped)(struct netflood_conn *c);
 };
@@ -97,14 +97,14 @@ struct netflood_conn {
   const struct netflood_callbacks *u;
   clock_time_t queue_time;
   rimeaddr_t last_originator;
-  uint8_t last_originator_seqno;
+  uint16_t last_originator_seqno;
 };
 
 void netflood_open(struct netflood_conn *c, clock_time_t queue_time,
 	     uint16_t channel, const struct netflood_callbacks *u);
 void netflood_close(struct netflood_conn *c);
 
-int netflood_send(struct netflood_conn *c, uint8_t seqno);
+int netflood_send(struct netflood_conn *c, uint16_t seqno);
 
 #endif /* __SIBC_H__ */
 /** @} */

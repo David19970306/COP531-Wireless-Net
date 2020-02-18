@@ -59,7 +59,7 @@
 /* Request data. */
 struct route_msg {
   rimeaddr_t dest;
-  uint8_t rreq_id;
+  uint16_t rreq_id;
   uint8_t pad;
   uint8_t group_num;
 };
@@ -71,7 +71,6 @@ struct node {
 };
 
 struct rrep_hdr {
-  uint8_t rreq_id;
   uint8_t hops;
   rimeaddr_t dest;
   rimeaddr_t originator;
@@ -114,7 +113,7 @@ send_rreq(struct route_discovery_conn *c, const rimeaddr_t *dest)
   rimeaddr_copy(&msg->dest, dest);
 
   netflood_send(&c->rreqconn, c->rreq_id);
-  c->rreq_id++;
+  c->rreq_id += 1;
 }
 /*---------------------------------------------------------------------------*/
 static void
@@ -298,7 +297,7 @@ rrep_packet_received(struct unicast_conn *uc, const rimeaddr_t *from)
 /*---------------------------------------------------------------------------*/
 static int
 rreq_packet_received(struct netflood_conn *nf, const rimeaddr_t *from,
-		     const rimeaddr_t *originator, uint8_t seqno, uint8_t hops)
+		     const rimeaddr_t *originator, uint16_t seqno, uint8_t hops)
 {
   struct route_msg *msg = packetbuf_dataptr();
   struct route_discovery_conn *c = (struct route_discovery_conn *)
@@ -343,7 +342,7 @@ rreq_packet_received(struct netflood_conn *nf, const rimeaddr_t *from,
       return 0; /* Don't continue to flood the rreq packet. */
     } else {
       /*      PRINTF("route request for %d\n", msg->dest_id);*/
-      PRINTF("ROUTE_DISCOVERY_REQUEST: from %d.%d hops %d rssi %d lqi %d\n",
+      printf("ROUTE_DISCOVERY_REQUEST: from %d.%d hops %d rssi %d lqi %d\n",
 	     from->u8[0], from->u8[1],
 	     hops,
 	     packetbuf_attr(PACKETBUF_ATTR_RSSI),

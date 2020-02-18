@@ -4,6 +4,11 @@
 
 #include "net/rime/multihop.h"
 
+struct node {
+  rimeaddr_t addr;
+  // uint16_t battery;
+  // uint16_t rssi;
+};
 
 rimeaddr_t *
 multihop_forward(struct multihop_conn *ptr,
