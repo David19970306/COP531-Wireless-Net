@@ -329,11 +329,10 @@ rreq_packet_received(struct netflood_conn *nf, const rimeaddr_t *from,
     if(rimeaddr_cmp(&msg->dest, &rimeaddr_node_addr)) {
       PRINTF("%d.%d: route_packet_received: route request for our address\n",
 	     rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1]);
-      PRINTF("ROUTE_DISCOVERY_REQUEST: from %d.%d hops %d rssi %d lqi %d\n",
+      printf("ROUTE_DISCOVERY: request for me orig %d.%d from %d.%d hops %d\n",
+		 originator->u8[0], originator->u8[1],
 	     from->u8[0], from->u8[1],
-	     hops,
-	     packetbuf_attr(PACKETBUF_ATTR_RSSI),
-	     packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY));
+	     hops);
 
       insert_route(originator, from, hops, -1);
       
@@ -342,11 +341,11 @@ rreq_packet_received(struct netflood_conn *nf, const rimeaddr_t *from,
       return 0; /* Don't continue to flood the rreq packet. */
     } else {
       /*      PRINTF("route request for %d\n", msg->dest_id);*/
-      printf("ROUTE_DISCOVERY_REQUEST: from %d.%d hops %d rssi %d lqi %d\n",
-	     from->u8[0], from->u8[1],
-	     hops,
-	     packetbuf_attr(PACKETBUF_ATTR_RSSI),
-	     packetbuf_attr(PACKETBUF_ATTR_LINK_QUALITY));
+      printf("ROUTE_DISCOVERY: request to %d.%d orig %d.%d from %d.%d hops %d\n",
+		 msg->dest.u8[0], msg->dest.u8[1],
+		 originator->u8[0], originator->u8[1],
+		 from->u8[0], from->u8[1],
+	     hops);
       insert_route(originator, from, hops, -1);
     }
     

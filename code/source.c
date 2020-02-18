@@ -152,9 +152,6 @@ PROCESS_THREAD(source_process, ev, data)
 
 		if (disp_switch)
 		{
-			printf("MULTIHOP_SEND: Sending packet toward %d.%d.\n", 
-				dest.u8[0], dest.u8[1]
-			);
 
 			while (1)
 			{
@@ -167,7 +164,11 @@ PROCESS_THREAD(source_process, ev, data)
 					route_discovery_discover(&rc, &dest, ROUTE_DISCOVERY_TIMEOUT);
 					PROCESS_WAIT_EVENT_UNTIL(ev == PROCESS_EVENT_CONTINUE);
 				}
-
+				printf("MULTIHOP_SEND: Sending packet toward %d.%d via %d.%d.\n", 
+					dest.u8[0], dest.u8[1],
+					route_lookup(&dest)->nexthop.u8[0],
+					route_lookup(&dest)->nexthop.u8[1]
+				);
 #if ACKNOWLEDGEMENT
 				acknowledged = 0;
 #endif
@@ -186,8 +187,10 @@ PROCESS_THREAD(source_process, ev, data)
 				/* If the packet is anknowledged, break from the loop. */
 				if (acknowledged)
 				{
+					printf("MULTIHOP_ACK: Packet is acknowledged.\n");
 					break;
 				}
+				printf("MULTIHOP_ACK: Packet is NOT acknowledged. Removing invalid route.\n");
 				/* 
 					Otherwise, remove the route from route table and 
 					continue with the loop. 
