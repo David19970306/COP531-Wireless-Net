@@ -14,14 +14,16 @@
 #include "sensor-value.h"
 
 /*---------------------------------------------------------------------------*/
+
+
+//#if PRESSURE_MODE
+//PROCESS(net_pressure_handler, "The test of Net pressure.");
+//AUTOSTART_PROCESSES(&net_pressure_handler);
+//#else
 PROCESS(source_process, "Source");
 PROCESS(button_stats, "Change state of the button");
-PROCESS(net_pressure_handler, "The test of Net pressure.");
-#if PRESSURE_MODE
-AUTOSTART_PROCESSES(&net_pressure_handler);
-#else
 AUTOSTART_PROCESSES(&source_process, &button_stats);
-#endif
+//#endif
 /*---------------------------------------------------------------------------*/
 static struct multihop_conn mc;
 static struct route_discovery_conn rc;
@@ -79,9 +81,8 @@ pressure_send_packet(const rimeaddr_t *dest)
 	packet->temperature = 9999;
 	packet->disp = 0;
 
-
-	if (dbg) printf("Sending data content:batt[%u]light[%u]temp[%u];d[%u]\n",
-		packet->battery, packet->light, packet->temperature, packet->disp);
+	//if (dbg) printf("Sending data content:batt[%u]light[%u]temp[%u];d[%u]\n",
+	//	packet->battery, packet->light, packet->temperature, packet->disp);
 	return multihop_send(&mc, dest);
 }
 /*---------------------------------------------------------------------------*/
@@ -116,6 +117,15 @@ write_packet(struct packet *packet)
 	packet->disp = disp_value;
 }
 void
+mock_write_packet(struct packet *packet)
+{
+	packet->group_num = GROUP_NUMBER;
+	packet->battery = 999;
+	packet->light = 999;
+	packet->temperature = 999;
+	packet->disp = disp_value;
+}
+void
 remove_route_to(const rimeaddr_t *dest)
 {
 	struct route_entry *route_entry;
@@ -128,9 +138,19 @@ remove_route_to(const rimeaddr_t *dest)
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(source_process, ev, data)
 {
+	
+#if PRESSURE_MODE
+	static int i = 0;
+	static int send_count = 0;
+	static clock_time_t count, start_count, end_count, diff;
+	rimeaddr_t dest;
+	dest.u8[0] = 0xff;
+	dest.u8[1] = 0xee;
+#else
 	rimeaddr_t dest;
 	dest.u8[0] = 0xdf;
 	dest.u8[1] = 0xdf;
+#endif
 	PROCESS_EXITHANDLER(route_discovery_close(&rc); multihop_close(&mc);)
 
 	PROCESS_BEGIN();
@@ -147,8 +167,14 @@ PROCESS_THREAD(source_process, ev, data)
 
 		static struct etimer et;
 		struct packet *packet;
-
+#if PRESSURE_MODE
+		// process wait time
+		etimer_set(&et, 200);  // 4000 is 1s
+		rtimer_init();
+		start_count = clock_time();
+#else
 		etimer_set(&et, SOURCE_PERIOD);
+#endif
 
 		if (disp_switch)
 		{
@@ -175,13 +201,18 @@ PROCESS_THREAD(source_process, ev, data)
 				packetbuf_clear();
 				packetbuf_set_datalen(sizeof(struct packet));
 				packet = packetbuf_dataptr();
+#if PRESSURE_MODE
+				packet->ack = PRESSURE_UNIQ_NUMBER;
+				mock_write_packet(packet);
+				send_count++;
+#else
 				packet->ack = 0;
 				write_packet(packet);
-
+#endif
 				multihop_send(&mc, &dest);
 
 #if ACKNOWLEDGEMENT
-				etimer_set(&et_delivery, SOURCE_ACK_WAIT_TIME);
+				etimer_set(&et_delivery, 10);
 				PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et_delivery) || ev == PROCESS_EVENT_CONTINUE);
 				/* If the packet is anknowledged, break from the loop. */
 				if (acknowledged)
@@ -198,9 +229,30 @@ PROCESS_THREAD(source_process, ev, data)
 		}
 
 		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-
+#if PRESSURE_MODE
+	i++;
+	if (i >= 2000) {
+		// restart the counter
+		static struct etimer et;
+		struct packet *packet;
+		end_count = clock_time();
+		diff = end_count - start_count;
+		printf("ticks = [~%u ms]\n", diff * 8);
+		packet = packetbuf_dataptr();
+		packet->ack = 0;
+		mock_write_packet(packet);
+		multihop_send(&mc, &dest);
+		printf("DataPacketACK:[%u]", send_count);
+		// wait 2 second unitl next rount
+		etimer_set(&et, CLOCK_SECOND * 2);
+		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+		rtimer_init();
+		start_count = clock_time();
+		i = 0;
+		send_count = 0;
 	}
-
+#endif
+	}
 	PROCESS_END();
 }
 
@@ -217,12 +269,12 @@ PROCESS_THREAD(button_stats, ev, data)
 		sensor = (struct sensors_sensor *)data;
 		if (sensor == &button_1_sensor) {
 			// switch on/off sending data
-			disp_switch = !disp_switch;
+			disp_switch = disp_switch ? 0:1;
 			printf("Disp Button Pressed, Val:[%d]\n", disp_switch);
 		}
 		else if (sensor == &button_2_sensor) {
 			// switch which value to be displayed
-			disp_value = !disp_value;
+			disp_value = disp_value ? 0:1;
 			printf("Switch Value Button Pressed, Val:[%d]\n", disp_value);
 		}
 	}
@@ -230,58 +282,96 @@ PROCESS_THREAD(button_stats, ev, data)
 
 }
 
-PROCESS_THREAD(net_pressure_handler, ev, data)
-{
-	// define variables
-	int i;
-	//uint16_t time_wait_count = 100;
-	struct packet *packet;
-
-	static clock_time_t count, start_count, end_count, diff;
-	static struct etimer et;
-
-	rimeaddr_t dest;
-	dest.u8[0] = 0xFF;
-	dest.u8[1] = 0xEE;
-	PROCESS_EXITHANDLER(multihop_close(&mc);)
-	PROCESS_BEGIN();
-
-	//int time_wait_count = 100; //count 4000 = 1s
-	multihop_open(&mc, MULTIHOP_CHANNEL, &multihop_callbacks);
-	// wait 2 seconds
-	//etimer_set(&et, CLOCK_SECOND * 2);
-	//PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-	// get start time; also clock_time_t clock_time()
-
-	while (1) {
-		route_discovery_discover(&rc, &dest, ROUTE_DISCOVERY_TIMEOUT);
-		etimer_set(&et, CLOCK_SECOND * 1);
-		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-
-		if (route_lookup(&dest))
-		{
-			printf("The path is found.\n");
-			break;
-		}
-	}
-
-
-	rtimer_init();
-	start_count = clock_time();
-
-	for (i = 0; i <= 99; i++) {
-
-		//wait a little time to control sending speed
-		//delay_usecond(100);
-		pressure_send_packet(&dest);
-		clock_delay(100);
-		//printf("%d\n",i+1);
-
-	}
-	end_count = clock_time();
-	diff = end_count - start_count;
-	printf("ticks = [~%u ms]\n", diff * 8);
-	PROCESS_END();
-
-}
+//PROCESS_THREAD(net_pressure_handler, ev, data)
+//{
+//	// define variables
+//	int i = 0;
+//	//uint16_t time_wait_count = 100;
+//	struct packet *packet;
+//
+//	static clock_time_t count, start_count, end_count, diff;
+//	static struct etimer et;
+//
+//	rimeaddr_t dest;
+//	dest.u8[0] = 0xFF;
+//	dest.u8[1] = 0xEE;
+//
+//	PROCESS_EXITHANDLER(route_discovery_close(&rc); multihop_close(&mc);)
+//	PROCESS_BEGIN();
+//	time = clock_time();
+//	route_discovery_open(&rc, time, ROUTE_DISCOVERY_CHANNEL, &route_discovery_callbacks);
+//	multihop_open(&mc, MULTIHOP_CHANNEL, &multihop_callbacks);
+//
+//	route_init();
+//	route_set_lifetime(ROUTE_LIFETIME);
+//	// process wait time
+//	etimer_set(&et, 100);  // 4000 is 1s
+//	rtimer_init();
+//	start_count = clock_time();
+//
+//
+//	while (1) {
+//#if ACKNOWLEDGEMENT
+//		static struct etimer et_delivery;
+//#endif
+//
+//		while (!route_lookup(&dest))
+//		{
+//			route_discovery_discover(&rc, &dest, ROUTE_DISCOVERY_TIMEOUT);
+//			PROCESS_WAIT_EVENT_UNTIL(ev == PROCESS_EVENT_CONTINUE);
+//		}
+//
+//#if ACKNOWLEDGEMENT
+//		acknowledged = 0;
+//#endif
+//
+//		packetbuf_clear();
+//		packetbuf_set_datalen(sizeof(struct packet));
+//		packet = packetbuf_dataptr();
+//		packet->ack = PRESSURE_UNIQ_NUMBER;
+//		mock_write_packet(packet);
+//
+//		multihop_send(&mc, &dest);
+//
+//#if ACKNOWLEDGEMENT
+//		etimer_set(&et_delivery, SOURCE_ACK_WAIT_TIME);
+//		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et_delivery) || ev == PROCESS_EVENT_CONTINUE);
+//		/* If the packet is anknowledged, break from the loop. */
+//		if (acknowledged)
+//		{
+//			break;
+//		}
+//		/*
+//			Otherwise, remove the route from route table and
+//			continue with the loop.
+//		*/
+//		remove_route_to(&dest);
+//#endif
+//	}
+//}
+//	PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+//	i++;
+//	if(i == 99){
+//		// restart the counter
+//		packet->ack = 0;
+//		multihop_send(&mc, &dest);
+//		end_count = clock_time();
+//		diff = end_count - start_count;
+//		printf("ticks = [~%u ms]\n", diff * 8);
+//		// wait 2 second unitl next rount
+//		etimer_set(&et, CLOCK_SECOND * 2);
+//		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
+//		rtimer_init();
+//		i = 0;
+//	}
+//
+//	//for (i = 0; i <= 99; i++) {
+//
+//	//	//wait a little time to control sending speed
+//	//	pressure_send_packet(&dest);
+//	//	clock_delay(100);
+//	//}
+//	PROCESS_END();
+//
+//}
 

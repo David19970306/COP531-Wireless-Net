@@ -29,10 +29,10 @@ uint8_t disp_value = 0;//change the display value (Temperature or Light)
 uint8_t disp_switch = 0;//Switch the mode of sending data.(turn on/off send periodically)
 
 #if PRESSURE_MODE
-int count;
+static int count;
+static int count_tmp = 0;
 #endif
 
-static int count_tmp = 0;
 static uint8_t dbg = 1;
 /*---------------------------------------------------------------------------*/
 static struct multihop_conn mc;
@@ -69,9 +69,9 @@ multihop_received(struct multihop_conn *ptr,
   uint8_t hops)
 {
   struct packet *packet = packetbuf_dataptr();
-#if PRESSURE_MODE
-  extern count;
-#endif
+//#if PRESSURE_MODE
+//  extern count;
+//#endif
   extern disp_switch;
   float battery;
   float light;
@@ -91,6 +91,7 @@ multihop_received(struct multihop_conn *ptr,
 	  count++;
   }
   else {
+    printf("Total received:[%u]\n", count);
 	  count = 0;
   }
 #else
@@ -111,8 +112,6 @@ multihop_received(struct multihop_conn *ptr,
     e->time = 0;
   }
 
-  multihop_print_route(first_node, hops, packet->route_index);
-
   battery = packet->battery;
   battery /= 100.0;
   light = packet->light;
@@ -121,7 +120,8 @@ multihop_received(struct multihop_conn *ptr,
   temperature /= 100.0;
 #if PRESSURE_MODE
   if (disp_switch) {
-#endif
+#else
+	multihop_print_route(first_node, hops, packet->route_index);
 	  if (packet->disp) {
 		  printf("DATA_PACKET: light %d.%02u battery %d.%02uV\n",
 			  get_decimal(light), get_fraction(light),
@@ -134,6 +134,7 @@ multihop_received(struct multihop_conn *ptr,
 			  get_decimal(battery), get_fraction(battery)
 		  );
 	  }
+#endif
 #if PRESSURE_MODE
   }
 #endif
@@ -167,7 +168,7 @@ PROCESS_THREAD(dest_process, ev, data)
     PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
 #if PRESSURE_MODE
-	printf("Total received:[%u], delta[%u]\n", count, count - count_tmp);
+	printf("RecInCycle:[%u], delta[%u]\n", count, count - count_tmp);
 	count_tmp = count;
 #endif
 
