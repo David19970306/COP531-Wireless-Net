@@ -59,6 +59,7 @@ multihop_received(struct multihop_conn *ptr,
 	if (packet->ack)
 	{
 		acknowledged = 1;
+		process_post(&source_process, PROCESS_EVENT_CONTINUE, NULL);
 	}
 #endif
 }
@@ -84,20 +85,19 @@ pressure_send_packet(const rimeaddr_t *dest)
 	return multihop_send(&mc, dest);
 }
 /*---------------------------------------------------------------------------*/
-static uint8_t route_discovery_finished;
 void
 route_discovery_new_route(struct route_discovery_conn *c, const rimeaddr_t *to)
 {
 	printf("ROUTE_DISCOVERY: New route to %d.%d is found.\n",
 		to->u8[0], to->u8[1]
 	);
-	route_discovery_finished = 1;
+	process_post(&source_process, PROCESS_EVENT_CONTINUE, NULL);
 }
 void
 route_discovery_timedout(struct route_discovery_conn *c)
 {
 	printf("ROUTE_DISCOVERY: Cannot discover route.\n");
-	route_discovery_finished = 1;
+	process_post(&source_process, PROCESS_EVENT_CONTINUE, NULL);
 }
 static const struct route_discovery_callbacks route_discovery_callbacks = {
   route_discovery_new_route, route_discovery_timedout
@@ -107,7 +107,7 @@ static const struct multihop_callbacks multihop_callbacks = {
   multihop_received, multihop_forward
 };
 void
-write_packet(const struct packet *packet)
+write_packet(struct packet *packet)
 {
 	packet->group_num = GROUP_NUMBER;
 	packet->battery = get_battery_voltage();
@@ -118,6 +118,7 @@ write_packet(const struct packet *packet)
 void
 remove_route_to(const rimeaddr_t *dest)
 {
+	struct route_entry *route_entry;
 	route_entry = route_lookup(dest);
 	if (route_entry)
 	{
@@ -146,7 +147,6 @@ PROCESS_THREAD(source_process, ev, data)
 
 		static struct etimer et;
 		struct packet *packet;
-		struct route_entry *route_entry;
 
 		etimer_set(&et, SOURCE_PERIOD);
 
@@ -164,9 +164,8 @@ PROCESS_THREAD(source_process, ev, data)
 				
 				while (!route_lookup(&dest))
 				{
-					route_discovery_finished = 0;
 					route_discovery_discover(&rc, &dest, ROUTE_DISCOVERY_TIMEOUT);
-					PROCESS_WAIT_EVENT_UNTIL(route_discovery_finished);
+					PROCESS_WAIT_EVENT_UNTIL(ev == PROCESS_EVENT_CONTINUE);
 				}
 
 #if ACKNOWLEDGEMENT
@@ -183,7 +182,7 @@ PROCESS_THREAD(source_process, ev, data)
 
 #if ACKNOWLEDGEMENT
 				etimer_set(&et_delivery, SOURCE_ACK_WAIT_TIME);
-				PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et_delivery) || acknowledged);
+				PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et_delivery) || ev == PROCESS_EVENT_CONTINUE);
 				/* If the packet is anknowledged, break from the loop. */
 				if (acknowledged)
 				{

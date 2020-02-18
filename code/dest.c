@@ -9,6 +9,7 @@
 #include "config.h"
 #include "util.h"
 #include "packet.h"
+#include "route.h"
 
 /*---------------------------------------------------------------------------*/
 PROCESS(dest_process, "Destination");
@@ -148,7 +149,12 @@ PROCESS_THREAD(dest_process, ev, data)
   time = clock_time();
 
   route_init();
+#if ACKNOWLEDGEMENT
   route_set_lifetime(ROUTE_LIFETIME);
+#else
+  route_set_lifetime(2*ROUTE_LIFETIME);
+#endif
+
 
   route_discovery_open(&rc, time, ROUTE_DISCOVERY_CHANNEL, &route_discovery_callbacks);
   multihop_open(&mc, MULTIHOP_CHANNEL, &multihop_callbacks);
