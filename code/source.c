@@ -44,10 +44,16 @@ multihop_received(struct multihop_conn *ptr,
   uint8_t hops)
 {
 	struct packet *packet = packetbuf_dataptr();
+	struct route_entry *e;
 
 	if (packet->group_num != GROUP_NUMBER)
 	{
 		return;
+	}
+	e = route_lookup_nexthop(sender, prevhop);
+	if (e)
+	{
+		e->time = 0;
 	}
 #if ACKNOWLEDGEMENT
 	if (packet->ack)
@@ -134,11 +140,7 @@ PROCESS_THREAD(source_process, ev, data)
 	multihop_open(&mc, MULTIHOP_CHANNEL, &multihop_callbacks);
 
 	route_init();
-#if ACKNOWLEDGEMENT
-	route_set_lifetime(10000);
-#else
-	route_set_lifetime(SOURCE_ROUTE_LIFETIME);
-#endif
+	route_set_lifetime(ROUTE_LIFETIME);
 
 	while (1) {
 

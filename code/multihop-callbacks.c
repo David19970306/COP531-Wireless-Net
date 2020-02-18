@@ -28,6 +28,12 @@ multihop_forward(struct multihop_conn *ptr,
     return NULL;
   }
 
+  route_entry = route_lookup_nexthop(originator, prevhop);
+  if (hops!=0 && route_entry)
+  {
+    route_entry->time = 0;
+  }
+
   route_entry = route_lookup(dest);
   if (!route_entry)
   {

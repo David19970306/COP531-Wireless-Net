@@ -126,8 +126,8 @@ route_add(const rimeaddr_t *dest, const rimeaddr_t *nexthop,
   struct route_entry *e;
 
   /* Avoid inserting duplicate entries. */
-  e = route_lookup(dest);
-  if(e != NULL && rimeaddr_cmp(&e->nexthop, nexthop)) {
+  e = route_lookup_nexthop(dest, nexthop);
+  if(e != NULL) {
     list_remove(route_table, e);
   } else {
     /* Allocate a new entry or reuse the oldest entry with highest cost. */
@@ -158,6 +158,26 @@ route_add(const rimeaddr_t *dest, const rimeaddr_t *nexthop,
 	 e->cost);
   
   return 0;
+}
+/*---------------------------------------------------------------------------*/
+struct route_entry *
+route_lookup_nexthop(const rimeaddr_t *dest, const rimeaddr_t *nexthop)
+{
+  struct route_entry *e;
+  struct route_entry *best_entry;
+
+  best_entry = NULL;
+  
+  /* Find the route with the lowest cost. */
+  for(e = list_head(route_table); e != NULL; e = list_item_next(e)) {
+    /*    printf("route_lookup: comparing %d.%d.%d.%d with %d.%d.%d.%d\n",
+     uip_ipaddr_to_quad(dest), uip_ipaddr_to_quad(&e->dest));*/
+
+    if(rimeaddr_cmp(dest, &e->dest) && rimeaddr_cmp(nexthop, &e->nexthop)) {
+      best_entry = e;
+    }
+  }
+  return best_entry;
 }
 /*---------------------------------------------------------------------------*/
 struct route_entry *

@@ -76,6 +76,7 @@ multihop_received(struct multihop_conn *ptr,
   float light;
   float temperature;
   struct node *first_node = (void *) (packet + 1);
+  struct route_entry *e;
   
   if (packet->group_num != GROUP_NUMBER)
   {
@@ -102,6 +103,12 @@ multihop_received(struct multihop_conn *ptr,
   packet->ack = 1;
   multihop_send(&mc, sender);
 #endif
+
+  e = route_lookup_nexthop(sender, prevhop);
+  if (e)
+  {
+    e->time = 0;
+  }
 
   multihop_print_route(first_node, hops, packet->route_index);
 
@@ -140,6 +147,9 @@ PROCESS_THREAD(dest_process, ev, data)
 
   time = clock_time();
 
+  route_init();
+  route_set_lifetime(ROUTE_LIFETIME);
+
   route_discovery_open(&rc, time, ROUTE_DISCOVERY_CHANNEL, &route_discovery_callbacks);
   multihop_open(&mc, MULTIHOP_CHANNEL, &multihop_callbacks);
   
@@ -164,13 +174,6 @@ PROCESS_THREAD(button_stats, ev, data)
 {
 	struct sensors_sensor *sensor;
 	PROCESS_BEGIN();
-
-	route_init();
-#if ACKNOWLEDGEMENT
-	route_set_lifetime(10000);
-#else
-	route_set_lifetime(DESTINATION_ROUTE_LIFETIME);
-#endif
 
 	while (1) {
 		PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event);
