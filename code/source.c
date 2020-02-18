@@ -37,18 +37,6 @@ extern const struct sensors_sensor button_1_sensor, button_2_sensor;
 static uint8_t dbg = 1;
 static uint8_t acknowledged;
 /*---------------------------------------------------------------------------*/
-void wait_until_route_discovery(const rimeaddr_t *dest)
-{
-
-}
-void
-send_packet(const rimeaddr_t *dest, uint8_t disp_value)
-{
-
-
-}
-
-/*---------------------------------------------------------------------------*/
 void
 multihop_received(struct multihop_conn *ptr,
   const rimeaddr_t *sender,
@@ -88,17 +76,20 @@ pressure_send_packet(const rimeaddr_t *dest)
 	return multihop_send(&mc, dest);
 }
 /*---------------------------------------------------------------------------*/
+static uint8_t route_discovery_finished;
 void
 route_discovery_new_route(struct route_discovery_conn *c, const rimeaddr_t *to)
 {
 	printf("ROUTE_DISCOVERY: New route to %d.%d is found.\n",
 		to->u8[0], to->u8[1]
 	);
+	route_discovery_finished = 1;
 }
 void
 route_discovery_timedout(struct route_discovery_conn *c)
 {
 	printf("ROUTE_DISCOVERY: Cannot discover route.\n");
+	route_discovery_finished = 1;
 }
 static const struct route_discovery_callbacks route_discovery_callbacks = {
   route_discovery_new_route, route_discovery_timedout
@@ -107,9 +98,24 @@ static const struct route_discovery_callbacks route_discovery_callbacks = {
 static const struct multihop_callbacks multihop_callbacks = {
   multihop_received, multihop_forward
 };
-/*---------------------------------------------------------------------------*/
-
-
+void
+write_packet(const struct packet *packet)
+{
+	packet->group_num = GROUP_NUMBER;
+	packet->battery = get_battery_voltage();
+	packet->light = get_light();
+	packet->temperature = get_temperature();
+	packet->disp = disp_value;
+}
+void
+remove_route_to(const rimeaddr_t *dest)
+{
+	route_entry = route_lookup(dest);
+	if (route_entry)
+	{
+		route_remove(route_entry);
+	}
+}
 /*---------------------------------------------------------------------------*/
 PROCESS_THREAD(source_process, ev, data)
 {
@@ -137,10 +143,11 @@ PROCESS_THREAD(source_process, ev, data)
 
 		etimer_set(&et, SOURCE_PERIOD);
 
-		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
-
-		if (disp_switch) {
-			printf("MULTIHOP_SEND: Sending packet toward %d.%d.\n", dest.u8[0], dest.u8[1]);
+		if (disp_switch)
+		{
+			printf("MULTIHOP_SEND: Sending packet toward %d.%d.\n", 
+				dest.u8[0], dest.u8[1]
+			);
 
 			while (1)
 			{
@@ -148,10 +155,9 @@ PROCESS_THREAD(source_process, ev, data)
 				
 				while (!route_lookup(&dest))
 				{
-					static struct etimer et_route_discovery;
+					route_discovery_finished = 0;
 					route_discovery_discover(&rc, &dest, ROUTE_DISCOVERY_TIMEOUT);
-					etimer_set(&et_route_discovery, ROUTE_DISCOVERY_TIMEOUT*1.2);
-					PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et_route_discovery));
+					PROCESS_WAIT_EVENT_UNTIL(route_discovery_finished);
 				}
 				
 				acknowledged = 0;
@@ -159,29 +165,28 @@ PROCESS_THREAD(source_process, ev, data)
 				packetbuf_clear();
 				packetbuf_set_datalen(sizeof(struct packet));
 				packet = packetbuf_dataptr();
-				packet->group_num = GROUP_NUMBER;
 				packet->ack = 0;
-				packet->battery = get_battery_voltage();
-				packet->light = get_light();
-				packet->temperature = get_temperature();
-				packet->disp = disp_value;
+				write_packet(packet);
 
 				multihop_send(&mc, &dest);
 				
 				etimer_set(&et_delivery, SOURCE_ACK_WAIT_TIME);
-				PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et_delivery));
+				PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et_delivery) || acknowledged);
 				
+				/* If the packet is anknowledged, break from the loop. */
 				if (acknowledged)
 				{
 					break;
 				}
-				route_entry = route_lookup(&dest);
-				if (route_entry)
-				{
-					route_remove(route_entry);
-				}
+				/* 
+					Otherwise, remove the route from route table and 
+					continue with the loop. 
+				*/
+				remove_route_to(&dest);
 			}
-	}
+		}
+
+		PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et));
 
 	}
 
@@ -202,12 +207,12 @@ PROCESS_THREAD(button_stats, ev, data)
 		if (sensor == &button_1_sensor) {
 			// switch on/off sending data
 			disp_switch = !disp_switch;
-			if (dbg) printf("Disp Button Pressed,Val:[%d]\n", disp_switch);
+			printf("Disp Button Pressed, Val:[%d]\n", disp_switch);
 		}
 		else if (sensor == &button_2_sensor) {
 			// switch which value to be displayed
 			disp_value = !disp_value;
-			if (dbg) printf("Switch Value Button Pressed,Val:[%d]\n", disp_value);
+			printf("Switch Value Button Pressed, Val:[%d]\n", disp_value);
 		}
 	}
 	PROCESS_END();
