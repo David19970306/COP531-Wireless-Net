@@ -98,9 +98,11 @@ multihop_received(struct multihop_conn *ptr,
   }
 #endif
 
+#if ACKNOWLEDGEMENT
   packet->ack = 1;
   multihop_send(&mc, sender);
-  
+#endif
+
   multihop_print_route(first_node, hops, packet->route_index);
 
   battery = packet->battery;
@@ -162,6 +164,13 @@ PROCESS_THREAD(button_stats, ev, data)
 {
 	struct sensors_sensor *sensor;
 	PROCESS_BEGIN();
+
+	route_init();
+#if ACKNOWLEDGEMENT
+	route_set_lifetime(10000);
+#else
+	route_set_lifetime(DESTINATION_ROUTE_LIFETIME);
+#endif
 
 	while (1) {
 		PROCESS_WAIT_EVENT_UNTIL(ev == sensors_event);

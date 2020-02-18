@@ -13,8 +13,6 @@
 #include "packet.h"
 #include "sensor-value.h"
 
-
-
 /*---------------------------------------------------------------------------*/
 PROCESS(source_process, "Source");
 PROCESS(button_stats, "Change state of the button");
@@ -35,7 +33,9 @@ static clock_time_t time;
 // sensinode sensors
 extern const struct sensors_sensor button_1_sensor, button_2_sensor;
 static uint8_t dbg = 1;
+#if ACKNOWLEDGEMENT
 static uint8_t acknowledged;
+#endif
 /*---------------------------------------------------------------------------*/
 void
 multihop_received(struct multihop_conn *ptr,
@@ -49,10 +49,12 @@ multihop_received(struct multihop_conn *ptr,
 	{
 		return;
 	}
+#if ACKNOWLEDGEMENT
 	if (packet->ack)
 	{
 		acknowledged = 1;
 	}
+#endif
 }
 /*---------------------------------------------------------------------------*/
 int
@@ -132,8 +134,11 @@ PROCESS_THREAD(source_process, ev, data)
 	multihop_open(&mc, MULTIHOP_CHANNEL, &multihop_callbacks);
 
 	route_init();
+#if ACKNOWLEDGEMENT
+	route_set_lifetime(10000);
+#else
 	route_set_lifetime(SOURCE_ROUTE_LIFETIME);
-
+#endif
 
 	while (1) {
 
@@ -151,7 +156,9 @@ PROCESS_THREAD(source_process, ev, data)
 
 			while (1)
 			{
+#if ACKNOWLEDGEMENT
 				static struct etimer et_delivery;
+#endif
 				
 				while (!route_lookup(&dest))
 				{
@@ -159,8 +166,10 @@ PROCESS_THREAD(source_process, ev, data)
 					route_discovery_discover(&rc, &dest, ROUTE_DISCOVERY_TIMEOUT);
 					PROCESS_WAIT_EVENT_UNTIL(route_discovery_finished);
 				}
-				
+
+#if ACKNOWLEDGEMENT
 				acknowledged = 0;
+#endif
 
 				packetbuf_clear();
 				packetbuf_set_datalen(sizeof(struct packet));
@@ -169,10 +178,10 @@ PROCESS_THREAD(source_process, ev, data)
 				write_packet(packet);
 
 				multihop_send(&mc, &dest);
-				
+
+#if ACKNOWLEDGEMENT
 				etimer_set(&et_delivery, SOURCE_ACK_WAIT_TIME);
 				PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et_delivery) || acknowledged);
-				
 				/* If the packet is anknowledged, break from the loop. */
 				if (acknowledged)
 				{
@@ -183,6 +192,7 @@ PROCESS_THREAD(source_process, ev, data)
 					continue with the loop. 
 				*/
 				remove_route_to(&dest);
+#endif
 			}
 		}
 
