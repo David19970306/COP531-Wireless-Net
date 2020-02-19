@@ -233,12 +233,12 @@ PROCESS_THREAD(button_stats, ev, data)
 		if (sensor == &button_1_sensor) {
 			// switch on/off sending data
 			disp_switch = !disp_switch;
-			printf("Disp Button Pressed, Val:[%d]\n", disp_switch);
+			printf("Button 1 is pressed, sensors reporting has %s.\n", disp_switch?"started":"stopped");
 		}
 		else if (sensor == &button_2_sensor) {
 			// switch which value to be displayed
 			disp_value = !disp_value;
-			printf("Switch Value Button Pressed, Val:[%d]\n", disp_value);
+			printf("Button 2 is pressed, switching to %s reporting.\n", disp_value?"light":"temperature");
 		}
 	}
 	PROCESS_END();
