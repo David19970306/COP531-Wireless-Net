@@ -129,6 +129,8 @@ remove_route_to(const rimeaddr_t *dest)
 PROCESS_THREAD(source_process, ev, data)
 {
 	rimeaddr_t dest;
+	uint8_t no_route;
+	
 	dest.u8[0] = 0xdf;
 	dest.u8[1] = 0xdf;
 	PROCESS_EXITHANDLER(route_discovery_close(&rc); multihop_close(&mc);)
@@ -158,17 +160,27 @@ PROCESS_THREAD(source_process, ev, data)
 #if ACKNOWLEDGEMENT
 				static struct etimer et_delivery;
 #endif
+				static struct etimer et_pause;
+				struct route_entry *e = NULL;
 				
+				no_route = (route_lookup(&dest) == NULL);
 				while (!route_lookup(&dest))
 				{
 					route_discovery_discover(&rc, &dest, ROUTE_DISCOVERY_TIMEOUT);
 					PROCESS_WAIT_EVENT_UNTIL(ev == PROCESS_EVENT_CONTINUE);
 				}
+				if (no_route)
+				{
+					etimer_set(&et_pause, PAUSE_TIME);
+					PROCESS_WAIT_EVENT_UNTIL(etimer_expired(&et_pause));				
+				}
+				e = route_lookup(&dest);
 				printf("MULTIHOP_SEND: Sending packet toward %d.%d via %d.%d.\n", 
 					dest.u8[0], dest.u8[1],
-					route_lookup(&dest)->nexthop.u8[0],
-					route_lookup(&dest)->nexthop.u8[1]
+					e->nexthop.u8[0],
+					e->nexthop.u8[1]
 				);
+				
 #if ACKNOWLEDGEMENT
 				acknowledged = 0;
 #endif
@@ -178,7 +190,7 @@ PROCESS_THREAD(source_process, ev, data)
 				packet = packetbuf_dataptr();
 				packet->ack = 0;
 				write_packet(packet);
-
+				
 				multihop_send(&mc, &dest);
 
 #if ACKNOWLEDGEMENT

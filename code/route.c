@@ -142,11 +142,11 @@ route_add(const rimeaddr_t *dest, const rimeaddr_t *nexthop,
     }
   }
 
+  e->time = 0;
   rimeaddr_copy(&e->dest, dest);
   rimeaddr_copy(&e->nexthop, nexthop);
   e->cost = cost;
   e->seqno = seqno;
-  e->time = 0;
   e->decay = 0;
 
   /* New entry goes first. */
