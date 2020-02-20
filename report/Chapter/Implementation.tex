@@ -3,16 +3,80 @@
 
 \section{Sensors Reporting}
 
+In this experiment, there are three kinds of sensors value that should be obtained by using Analog-to-digital converter (ADC), including temperature, light and battery voltage. 
+In the Sensinode device, these sensors should be initialled based on the ADC before obtaining the values. The build-in function will be used as follow: \texttt{sensors\_find(ADC\_SENSOR)}. After initialling the sensors, the original value needed can be read directly. 
+
+However, the true values are still needed to convert by using the specific formulas after using the function \texttt{sensor->value(ADC\_SENSOR\_TYPE\_TEMP)}. 
+
 \subsection{Temperature Reporting}
+
+For temperature sensor, the true value of temperature is the environmental temperature, which is got by using the Formula \ref{equ:temperature} as follow.
+
+\begin{equation}
+    Temperature = \frac{0.61065 \times ADC - 773}{2.45}
+\label{equ:temperature}
+\end{equation}
+
+where the temperature is the true value after calculating and the ADC is the argument obtained before. 
+
 \subsection{Light Reporting}
+
+For light sensor, the illuminance obtained from the sensor in Sensinode device is between $40$ Lux and $600$ Lux. The original value can be got by using the function \\
+\texttt{sensor->value(ADC\_SENSOR\_TYPE\_LIGHT)}. 
+The specific Formula \ref{equ:illuminance} is shown as follows.
+
+\begin{equation}
+    Illuminance = 
+    \frac{600 \times 1.25 \times ADC}{2047 \times 0.9}
+\label{equ:illuminance}
+\end{equation}
+where the Illuminance value is the true value after calculating and the ADC is the same as the above.
+
+
 \subsection{Battery Level Reporting}
-\subsection{Event Handling}
+Another sensor is the battery sensor, which gets the voltage of battery. The detailed formula \ref{equ:battery} is displayed as follow:
+
+\begin{equation}
+    Battery = 
+    \frac{3 \times ADC \times VDD \times 3.75}{2 \times 2047 \times 2047}
+\label{equ:battery}
+\end{equation}
+
+where the Battery is the true voltage after converting, the ADC and VDD mean that the working voltage inside the Sensinode device, which can be obtained from the sensor directly by the function \texttt{sensor->value(ADC\_SENSOR\_TYPE\_BATTERY)} and \\
+\texttt{sensor->value(ADC\_SENSOR\_TYPE\_VDD)}.
+
+\subsection{Button Events}
+For every sensor, there are two buttons separately that can control two modes. One of them is to switch on/off sending data. Another one is to choose which value should be displayed. For the specific implementations, the listening event will be executed by using the build-in variables (\texttt{button\_1\_senso}, \texttt{button\_2\_sensor}, \texttt{sensor}). 
+
+When the value of sensor is equal to \texttt{button\_1\_sensor}, it means that the button has been triggered. The button2 is likewise to the button1. After pressing the buttons, the value will change the current status, and become the opposite value. 
 
 \section{Stage One: Route Discovery}
 
-\section{Stage Two: Route Selection}
+In this part, the AODV algorithm is implemented based on the route discovery in rime library \footnote{http://contiki.sourceforge.net/docs/2.6/a01798.html}. 
+It can mainly be divided into two parts, including route requests, route reply.
 
-\section{Sensors Displaying}
+For route requests, the control packets will be sent to other nodes by using function \texttt{netflood()}. The detailed information in the control packet have destination address, request ID, pad, group number.
+
+For route reply, the packets will be sent by the destination node after finding a path from source to destination. The reply data includes request ID, hops number, destination address, originator address, group number, request RSSI. In our algorithm, the RSSI plays a crucial role in route discovery.  
+
+During route discovery, the route index will be calculated by the Formula \ref{equ:index} as follows.
+
+\begin{equation}
+    \text{Route Index} = 
+    \frac{\sum_i^N{RSSI_i}}{N \times H}
+\label{equ:index}
+\end{equation}
+
+where $RSSI_i$ is the $i$-th intermediate node RSSI level, $N$ is the number of the intermediate nodes and $H$ is the number of hops from the source node to the destination node on the route.  
+
+Route Index as a main role in route discovery is quite important, which can find the current closest device based on the value in the whole network. 
+After reaching the destination, the destination node will reply to the source node and then format an active path for sending data. After getting the route index, it will be used and forwarded by each node. 
+
+\section{Stage Two: Data Delivery}
+
+Before sending the headers and data, all value will be packed by using a \texttt{struct}, and then the build-in function (\texttt{multihop\_send()}) is used for transferring the data. When the destination node received the packets from the source node, the acknowledgement will return to the source node and make sure that the packets have been received.
+
+% \section{Sensors Displaying}
 
 
 
