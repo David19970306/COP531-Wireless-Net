@@ -104,12 +104,24 @@ Route Expiry and Renewal ensures that each route is always up to date and forces
 
 \section{Stage Two: Data Delivery}
 
-At this stage, for source node, it has its primary process, where every time it initiated, it will wait two seconds and then decide what type of value it is going to collect; Whether temperature/light value or battery voltage. Then it will send a packet to intermediate nodes ask them to forward to the destination node. Since it is multithreading, at packet received call-back, it will check if it is destination while a packet received. If the answer is negative, it will be looking up route table to see if destination in route table or not, it will unicast to next route entry if it finds destination in route table, or it will redo route discovery process if there is no destination in its route table. At the same time button even, handler is waiting to check which button has been clicked; If the button one has clicked the information output mode will be modified, whereas sensor value content will be modified while button two has been clicked.
+At this stage, for source node, it has its primary process, where every time it initiated, it will wait two seconds and then decide what type of value it is going to collect; Whether temperature/light value or battery voltage. Then it will send a packet to intermediate nodes ask them to forward to the destination node. Since it is multi-threading, at packet received call-back, it will check if it is destination while a packet received. If the answer is negative, it will be looking up route table to see if destination in route table or not, it will unicast to next route entry if it finds destination in route table, or it will redo route discovery process if there is no destination in its route table. At the same time button even, handler is waiting to check which button has been clicked; If the button one has clicked the information output mode will be modified, whereas sensor value content will be modified while button two has been clicked.
+
+\begin{figure}
+\centering
+\includegraphics[width=\textwidth]{source}
+\caption{Flowchart of the Source Node.}
+\label{fig:source}
+\end{figure}
 
 As for the destination node, the job is receiving packets and displaying them on-screen of the PC. It has multi-thread as well. It will initialize event handler first, while it received a packet, it will check whether if itself is a destination. If the answer is positive, it will resolve what content that packet have, whether it is temperature/light value or battery value, and print everything on screen; if the answer is negative, it will be looking up in route table and check if it needs to unicast route entry or redo the route discovery. Simultaneously debug information handler will check if the button has pressed with button the event handler, if the button has been pressed, it will change debug output. 
 
 
-
+\begin{figure}
+\centering
+\includegraphics[width=\textwidth]{dest}
+\caption{Flowchart of the Destination Node.}
+\label{fig:dest}
+\end{figure}
 
 
 

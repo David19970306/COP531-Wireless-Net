@@ -52,7 +52,7 @@ When the value of sensor is equal to \texttt{button\_1\_sensor}, it means that t
 
 \section{Stage One: Route Discovery}
 
-In this part, the AODV algorithm is implemented based on the route discovery in rime library \footnote{http://contiki.sourceforge.net/docs/2.6/a01798.html}. 
+In this part, the AODV algorithm is implemented based on the route discovery in Rime library \citep{dunkels2007rime,dunkels2007adaptive} \footnote{http://contiki.sourceforge.net/docs/2.6/a01798.html}. 
 It can mainly be divided into two parts, including route requests, route reply.
 
 For route requests, the control packets will be sent to other nodes by using function \texttt{netflood()}. The detailed information in the control packet have destination address, request ID, pad, group number.

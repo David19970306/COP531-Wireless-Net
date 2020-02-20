@@ -158,17 +158,17 @@ After the fourth node is switched off, it receives several RREQ from the source 
 After the source learns a stable route towards the destination, the destination device starts regularly receiving data packets from the source device through the new route.
 The new route goes through the first intermediate node (1:1) and later the third intermediate node (3:3).
 
-\subsection{Extra Testing: Network performance test}
+\section{Extra Testing: Network Performance Test}
 
 The overall wireless network performance can be spited into several parts.
 
-\subsubsection{Network stability performance test}
+\subsection{Network Stability}
 
 First, we use the data packet loss rate as the network stability standard. Because that transmitted data is easily interference by the other raido-wave signals. The network performance is also influenced by that item.
 
 In this section, the data packet loss rate is the main parameters that should be given attention.
 
-We implemented two different kinds of protocol and tested them under 3 different circumstances. The result of this part is shown in \ref{fig:packetloss} and \ref{fig:packetlossnew}
+We implemented two different kinds of protocol and tested them under 3 different circumstances. The result of this part is shown in Figure \ref{fig:packetloss} and \ref{fig:packetlossnew}.
 
 \begin{figure}
     \centering
@@ -184,16 +184,16 @@ We implemented two different kinds of protocol and tested them under 3 different
     \label{fig:packetlossnew}
 \end{figure}
 
-\subsubsection{Network data sending rate performance test}
+\subsection{Network Data Sending Rate}
 
 Second, we need to know the maximum packet process rate of the network using different routing algorithms.
 
 In this section, we separate the test procedure into 2 parts. The first part is aimed to test the performance of different algorithms, the second part is aimed to test the maximum performance on the proposed AODV algorithm. Also, in AODV algorithm, we implemented 2 different method, the first method is standard AODV, which dose not use ACK packet. The second method is modified AODV, which will use ACK packet to reduce packet loss and improve the performance of the network.
 
-\subsubsection{Performance comparison of different algorithms.}
+\subsection{Performance Comparison of Different Algorithms}
 
 In this part, we adopted three different index algorithms to test the performance of the wireless network.
-The first algorithm is proposed index formula \ref{equ:index3}
+The first algorithm is proposed index Formula \ref{equ:index3}.
 
 \begin{equation}
     \text{Route Index} = 
@@ -201,15 +201,14 @@ The first algorithm is proposed index formula \ref{equ:index3}
 \label{equ:index3}
 \end{equation}
 
-The second algorithm is route choose directly using hops, can be represented as \ref{equ:index1}
+The second algorithm is route choose directly using hops, can be represented as Formula \ref{equ:index1}.
 
 \begin{equation}
-    \text{Route Index} = 
-    {\sum_i^H HOPS}
+    \text{Route Index} = H
 \label{equ:index1}
 \end{equation}
 
-The final one is proposed using both RSSI and HOPS as presented as \ref{equ:index2}
+The final one is proposed using both RSSI and HOPS as presented as Formula \ref{equ:index2}.
 
 \begin{equation}
     \text{Route Index} = 
@@ -229,9 +228,9 @@ During the test procedure, we found that these 3 algorithms has no big influence
 As can be seen, the difference of 3 different algorithms is within the normal data variance range. Thus, routing algorithms tested in the test environment.
 The reason for this is that under the circumstance of the test environment, all routes is not stable. Even if the algorithm choose the right path at the stage of building the data path, the result is still not stable.
 
-\subsubsection{performance of maximum data sending rate on proposed algorithm.}
+\subsection{Maximum Data Sending Rate on Proposed Algorithm}
 
-In this part, different sleep time is tested to find the maximum data processing rate of the Sensinode. Experiment method is the same as explained before. We use two Sensinode using multicast method. The different sleep will denote different data sending rate, as calculated using formula \ref{equ:speed}. 
+In this part, different sleep time is tested to find the maximum data processing rate of the Sensinode. Experiment method is the same as explained before. We use two Sensinode using multicast method. The different sleep will denote different data sending rate, as calculated using Formula \ref{equ:speed}. 
 
 \begin{equation}
     \text{Send speed} = 
