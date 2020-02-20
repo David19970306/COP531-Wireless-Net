@@ -3,10 +3,20 @@
 
 
 \section{Conclusions}
+TODO...
 
 \section{Further Work}
 
 
+After examining the performance of the network. We found that there exists severe packet loss when data sending rate is high. There are several causes could lead to such result. Further work should focus on resolving this problem.
+
+In the coursework requirement, there is no need for data acknowledgement. In such circumstance, the sender won’t know whether the data packet is successfully sent. Thus, we could add data acknowledgement in the process of sending data. After add data acknowledgement, the data sending rate is limited, due to that we could only send one packet at each time before data acknowledgement is received.
+
+Thus, another improvement area is adding data sending buffer. When handling data buffer, we could add both data sending buffer and data receiver buffer. The advantage of adding sending buffer is that we could send more data at each time. As a result, the throughput of the network is increased. The advantage of adding receiving data buffer is that when receiving data packet which has no route to be sent, we could store the data in the buffer and wait for the correct route is found. In this way, less data packets are dropped when the topology of the network is changed.
+
+Also, the AODV protocol we implemented in the coursework is not standard protocol. We could also implement some extra features required by AODV protocol. Such as RRER reply mechanism and data queuing strategy.
+
+In conclusion, further is focused on improving the data throughput performance of the network.
 
 
 

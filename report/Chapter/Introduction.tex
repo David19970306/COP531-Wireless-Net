@@ -4,10 +4,59 @@
 
 \section{Ad Hoc Wireless Sensor Network}
 
+Ad Hoc Wireless Sensor Network is a type of network that has multiple hops, in-centralised, self-organizing wireless network; it also known as Multi-hop network, or Infrastructure-less Network, Self-organizing Network.
+
+The entire network has no fixed infrastructure, each node has functional mobility, and they can stay in contact with each other dynamically in any way. In this kind of network, because the wireless terminal coverage has a restricted value range, two user terminals that do not communicate can use each other the forward packets directly. Growing node also has a router that can detect and maintain pathways to other nodes.
+
+\subsection{Features of Ad Hoc Wireless Sensor Network}
+
+\subsubsection{Independence}
+The most significant distinction between ad hoc network and traditional communication network is, without the help of hardware infrastructure, that it could be able to build a mobile communication network at any place in any time. 
+Its establishment does not depend on existing network communication facilities; It also has absolute independence.
+This ad hoc network functionality is very well-suited to disaster relief, remote and other applications.
+
+\subsubsection{Infrastructures}
+Mobile hosts in ad hoc networks could travel around the network at will. Host movement can result in increasing or disappearing linkages between hosts, and the relationship between hosts will continuously change. The host may be a router in an ad hoc network; Therefore, motions allows the topology of the network to change constantly, in variable ways and at unpredictable speeds. The network topology is relatively stable for modern networks.
+
+\subsubsection{Communication bandwidth}
+There is no wired infrastructure in ad hoc networks, so wireless communication is used to communicate between hosts. The network bandwidth they provide is much smaller than that of wired channels, due to the physical features of wireless networks. However, given the collision, signal attenuation, noise interference and other factors produced by the competing Shared Wireless channel, the actual bandwidth available to the mobile terminal are far below the theoretical maximum bandwidth value.
+
+\subsubsection{Energy}
+The host is a mobile device that is ad hoc networks, such as a a portable computer, or a handheld computer. ad hoc network has the characteristic of limited energy because the host may be in the state of constant movement and the battery mainly provides the energy of the host.
+
+\subsubsection{Distribution}
+There is no central control node in an ad hoc network, and the hosts are connected via the distributed protocol. When one or some network nodes fail, the rest of the nodes may still function normally.
+
+
 \section{Ad Hoc On-Demand Distance Vector (AODV) Routing Protocol}
 
-AODV Routing Protocol \citep{rfc3561}...
+AODV Routing Protocol \citep{rfc3561} is a reactive routing protocol commonly used for mobile Ad-Hoc Networks (MANETs), which is developed and implemented in Linux Operating System.
+As implied in the name, the protocol is only initiated  when a data packet is needed to be sent to another node and no route is available at the moment.
 
+A simplified version of AODV protocol is described as follows and can be divided into two stages, Route Request and Route Reply.
 
+\subsection{Route Request}
+
+The source node broadcasts a route discovery request (RREQ) to its neighbours.
+Each neighbour except the destination, on receiving the RREQ, updates its own route table and rebroadcasts the RREQ.
+
+\subsection{Route Reply}
+
+The destination, on receiving the RREQ, updates its own route table and sends a reply (RREP) back to the source, through the route learned in the request stage.
+Each neighbour except the source, on receiving the RREP, updates its own route table and forwards the RREP.
+The source, on receiving the RREP, updates its own route table and thus learns a route to the destination.
+
+\section{Task}
+
+In this report, we attempt to build a Ad Hoc Wireless Sensor Network, with AODV as the routing protocol.
+The full details of our version of AODV protocol are described in Section \ref{sec:design-aodv}.
+
+The network is composed of six Sensinode devices, among which one is the source sensing device, one is the destination sensing device and the others are intermediate nodes.
+
+The source sends out sensor readings regularly to the destination using the route learnt from AODV protocol, which goes through intermediate nodes.
+
+To cope with the dynamic changes in the network, acknowledgements for data delivery are introduced.
+The destination device, on receiving the sensor readings, sends back an acknowledgements to the source.
+When the source doesn't receive an acknowledgement for a previous data packet, it should consider the previous route lose and initiate AODV protocol to learn a new route.
 
 
