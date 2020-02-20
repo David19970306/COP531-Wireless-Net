@@ -91,6 +91,8 @@ struct rrep_hdr {
 #define PRINTF(...)
 #endif
 
+extern uint8_t verbose;
+
 /*---------------------------------------------------------------------------*/
 static char rrep_pending;		/* A reply for a request is pending. */
 /*---------------------------------------------------------------------------*/
@@ -202,19 +204,19 @@ void print_route(struct node *node, const rimeaddr_t *dest,
 	uint8_t i = hops;
 	float battery;
 	node += hops - 1;
-	printf("ROUTE_DISCOVERY: reply ");
+	if (verbose) printf("ROUTE_DISCOVERY: reply ");
 	while (i-- > 0) 
 	{
 		battery = (unsigned) node->battery;
 		battery /= 100.0f;
-		printf("%d.%d (%d.%02uV, %d) -> ", 
+		if (verbose) printf("%d.%d (%d.%02uV, %d) -> ", 
 			node->addr.u8[0], node->addr.u8[1], 
 			get_decimal(battery), get_fraction(battery),
 			node->rssi
 		);
 		node -= 1;
 	}
-	printf("%d.%d (%d) INDEX = %d.%02u\n", 
+	if (verbose) printf("%d.%d (%d) INDEX = %d.%02u\n", 
 		dest->u8[0], dest->u8[1],
 		request_rssi,
 		get_decimal(route_index), get_fraction(route_index)
@@ -329,7 +331,7 @@ rreq_packet_received(struct netflood_conn *nf, const rimeaddr_t *from,
     if(rimeaddr_cmp(&msg->dest, &rimeaddr_node_addr)) {
       PRINTF("%d.%d: route_packet_received: route request for our address\n",
 	     rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1]);
-      printf("ROUTE_DISCOVERY: request for me orig %d.%d from %d.%d hops %d\n",
+      if (verbose) printf("ROUTE_DISCOVERY: request for me orig %d.%d from %d.%d hops %d\n",
 		 originator->u8[0], originator->u8[1],
 	     from->u8[0], from->u8[1],
 	     hops);
@@ -341,7 +343,7 @@ rreq_packet_received(struct netflood_conn *nf, const rimeaddr_t *from,
       return 0; /* Don't continue to flood the rreq packet. */
     } else {
       /*      PRINTF("route request for %d\n", msg->dest_id);*/
-      printf("ROUTE_DISCOVERY: request to %d.%d orig %d.%d from %d.%d hops %d\n",
+      if (verbose) printf("ROUTE_DISCOVERY: request to %d.%d orig %d.%d from %d.%d hops %d\n",
 		 msg->dest.u8[0], msg->dest.u8[1],
 		 originator->u8[0], originator->u8[1],
 		 from->u8[0], from->u8[1],
@@ -396,7 +398,7 @@ route_discovery_discover(struct route_discovery_conn *c, const rimeaddr_t *addr,
     return 0;
   }
   
-  printf("ROUTE_DISCOVERY: Broadcasting request to %d.%d.\n", addr->u8[0], addr->u8[1]);
+  if (verbose) printf("ROUTE_DISCOVERY: Broadcasting request to %d.%d.\n", addr->u8[0], addr->u8[1]);
 
   PRINTF("ROUTE_DISCOVERY_REQUEST: sending route request\n");
   ctimer_set(&c->t, timeout, timeout_handler, c);

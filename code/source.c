@@ -33,6 +33,8 @@ static clock_time_t time;
 // sensinode sensors
 extern const struct sensors_sensor button_1_sensor, button_2_sensor;
 static uint8_t dbg = 1;
+uint8_t verbose = 1;
+
 #if ACKNOWLEDGEMENT
 static uint8_t acknowledged;
 #endif

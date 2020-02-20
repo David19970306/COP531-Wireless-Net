@@ -17,7 +17,7 @@ PROCESS(button_stats, "Change state of the button");
 #if PRESSURE_MODE
 AUTOSTART_PROCESSES(&dest_process, &button_stats);
 #else
-AUTOSTART_PROCESSES(&dest_process);
+AUTOSTART_PROCESSES(&dest_process, &button_stats);
 #endif
 /*---------------------------------------------------------------------------*/
 static struct route_discovery_conn rc;
@@ -27,6 +27,7 @@ static const struct route_discovery_callbacks route_discovery_callbacks = { NULL
 extern const struct sensors_sensor button_1_sensor, button_2_sensor;
 uint8_t disp_value = 0;//change the display value (Temperature or Light)
 uint8_t disp_switch = 0;//Switch the mode of sending data.(turn on/off send periodically)
+uint8_t verbose = 1;
 
 #if PRESSURE_MODE
 int count;
@@ -49,15 +50,15 @@ multihop_print_route(struct node *node, const uint8_t hops, float route_index)
 	uint8_t i = hops;
 	route_index /= 100.0;
 	
-	printf("MULTIHOP_RECEIVED: orig ");
+	if (verbose) printf("MULTIHOP_RECEIVED: orig ");
 	while (i-- > 0) 
 	{
-		printf("%d.%d -> ", 
+		if (verbose) printf("%d.%d -> ", 
 			node->addr.u8[0], node->addr.u8[1]
 		);
 		node += 1;
 	}
-	printf("%d.%d ROUTE_INDEX = -%d.%02u\n", 
+	if (verbose) printf("%d.%d ROUTE_INDEX = -%d.%02u\n", 
 		rimeaddr_node_addr.u8[0], rimeaddr_node_addr.u8[1],
 		get_decimal(route_index), get_fraction(route_index)
 	);
@@ -122,14 +123,24 @@ multihop_received(struct multihop_conn *ptr,
   if (disp_switch) {
 #endif
 	  if (packet->disp) {
-		  printf("DATA_PACKET: light %d.%02d battery %d.%02uV\n",
+		  if (verbose) printf("DATA_PACKET: light %d.%02d battery %d.%02uV\n",
+			  light, (packet->light-light*100),
+			  get_decimal(battery), get_fraction(battery)
+		  );
+		  else printf("%d.%02u %d.%02d %d.%02u\n",
+			  0, 0,
 			  light, (packet->light-light*100),
 			  get_decimal(battery), get_fraction(battery)
 		  );
 	  }
 	  else {
-		  printf("DATA_PACKET: temperature %d.%02uC battery %d.%02uV\n",
+		  if (verbose) printf("DATA_PACKET: temperature %d.%02uC battery %d.%02uV\n",
 			  get_decimal(temperature), get_fraction(temperature),
+			  get_decimal(battery), get_fraction(battery)
+		  );
+		  else  printf("%d.%02u %d.%02d %d.%02u\n",
+			  get_decimal(temperature), get_fraction(temperature),
+			  0, 0,
 			  get_decimal(battery), get_fraction(battery)
 		  );
 	  }
@@ -187,12 +198,11 @@ PROCESS_THREAD(button_stats, ev, data)
 		if (sensor == &button_1_sensor) {
 			// switch on/off sending data
 			disp_switch = !disp_switch;
-			if (dbg) printf("Disp Button Pressed,Val:[%d]\n", disp_switch);
+			verbose = !verbose;
 		}
 		else if (sensor == &button_2_sensor) {
 			// switch which value to be displayed
 			disp_value = !disp_value;
-			if (dbg) printf("Switch Value Button Pressed,Val:[%d]\n", disp_value);
 		}
 	}
 	PROCESS_END();

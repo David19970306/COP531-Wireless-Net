@@ -8,7 +8,7 @@
 #include "route.h"
 #include "util.h"
 
-
+extern uint8_t verbose;
 
 rimeaddr_t *
 multihop_forward(struct multihop_conn *ptr,
@@ -66,7 +66,7 @@ multihop_forward(struct multihop_conn *ptr,
   // current_node->rssi = (hops==0) ? 0 : packetbuf_attr(PACKETBUF_ATTR_RSSI);
   if (prevhop)
   {
-	  printf("MULTIHOP_FORWARD: orig %d.%d dest %d.%d last %d.%d hops %d\n",
+	  if (verbose) printf("MULTIHOP_FORWARD: orig %d.%d dest %d.%d last %d.%d hops %d\n",
 		originator->u8[0], originator->u8[1],
 		dest->u8[0], dest->u8[1],  
 		prevhop->u8[0], prevhop->u8[1],
