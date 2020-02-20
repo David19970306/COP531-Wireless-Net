@@ -74,7 +74,7 @@ multihop_received(struct multihop_conn *ptr,
 #endif
   extern disp_switch;
   float battery;
-  float light;
+  uint16_t light;
   float temperature;
   struct node *first_node = (void *) (packet + 1);
   struct route_entry *e;
@@ -115,16 +115,15 @@ multihop_received(struct multihop_conn *ptr,
 
   battery = packet->battery;
   battery /= 100.0;
-  light = packet->light;
-  light /= 100.0;
+  light = packet->light / 100;
   temperature = packet->temperature;
   temperature /= 100.0;
 #if PRESSURE_MODE
   if (disp_switch) {
 #endif
 	  if (packet->disp) {
-		  printf("DATA_PACKET: light %d.%02u battery %d.%02uV\n",
-			  get_decimal(light), get_fraction(light),
+		  printf("DATA_PACKET: light %d.%02d battery %d.%02uV\n",
+			  light, (packet->light-light*100),
 			  get_decimal(battery), get_fraction(battery)
 		  );
 	  }
