@@ -20,13 +20,13 @@ The source device learns a route to the destination device from a simplified ver
 
 
 
-<img src="report/Figures/request.pdf" style="zoom: 67%;" />
+<img src="report/Figures/request.png" style="zoom: 67%;" />
 
 > AODV: Broadcasting a Request (RREQ) in AODV Protocol.
 
 
 
-<img src="report/Figures/reply.pdf" style="zoom: 67%;" />
+<img src="report/Figures/reply.png" style="zoom: 67%;" />
 
 >  AODV: Forwarding a Reply (RREP) in AODV Protocol.
 
